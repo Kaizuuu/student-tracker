@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#216b52" />
+    <title>You're offline | Student Tracker</title>
+    <style>
+      :root { color-scheme: light dark; font-family: Arial, Helvetica, sans-serif; }
+      body { min-height: 100vh; margin: 0; display: grid; place-items: center; background: #f6f7f4; color: #1c2622; }
+      main { width: min(26rem, calc(100% - 3rem)); padding: 2rem; border: 1px solid #e4e9e4; border-radius: 1.5rem; background: white; }
+      .mark { display: grid; width: 3rem; height: 3rem; place-items: center; border-radius: 1rem; background: #216b52; color: white; font-size: 1.5rem; font-weight: 700; }
+      h1 { margin: 1.5rem 0 .5rem; font-size: 1.5rem; }
+      p { margin: 0; color: #64736b; line-height: 1.6; }
+      @media (prefers-color-scheme: dark) {
+        body { background: #111815; color: #edf4ef; }
+        main { border-color: #303c35; background: #1b2420; }
+        p { color: #a2b0a8; }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="mark" aria-hidden="true">S</div>
+      <h1>You're offline</h1>
+      <p>Reconnect to open a page you haven't visited yet. Previously opened pages may still be available.</p>
+    </main>
+  </body>
+</html>

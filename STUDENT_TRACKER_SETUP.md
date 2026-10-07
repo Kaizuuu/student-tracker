@@ -68,25 +68,25 @@ Commands may change over time, so if one fails, check the official docs for that
    ```
    npm install idb
    ```
-2. Create `src/lib/db.ts`. It opens one database with stores for: `subjects`, `classes`, `tasks`, `exams`, and later `habits` and `notes`.
-3. Every screen reads and writes through this file only, so the storage can be swapped for Supabase sync in Phase 3.
+2. Create `src/lib/db.ts`. It opens one versioned database with stores for `subjects`, `classes`, `tasks`, `subtasks`, and `calendarEntries` (exams and events).
+3. Define shared record shapes in `src/types/records.ts`. Every screen reads and writes through `src/lib/db.ts` so storage can be swapped for Supabase sync in Phase 3.
 4. Useful extras for later phases:
    ```
    npm install date-fns
    ```
    (date handling for countdowns, recurring classes, and quick capture)
 
-**Important:** iOS can clear web storage. Build the JSON backup button (task P1-13) early.
+**Important:** iOS can clear web storage. Use **More -> Backup and restore** to download a JSON copy or restore one later.
 
 ---
 
 ## Part 4: Make it a PWA
 
-1. **Manifest:** create `src/app/manifest.ts` with name, short name, `display: "standalone"`, theme color, background color, and icons.
-2. **Icons:** put `icon-192.png`, `icon-512.png`, and `apple-touch-icon.png` (180x180) in `public/`. Make them with any free icon maker.
-3. **iOS meta tags:** in `src/app/layout.tsx`, set metadata `appleWebApp` (capable, title, status bar style) and the `viewport` with `viewport-fit=cover`.
-4. **Service worker:** create `public/sw.js` that caches the app shell for offline use, and register it from a small client component in `layout.tsx` (only in production).
-5. **Test:** run `npm run build` then `npm start`, open in Chrome, press F12 -> **Application** tab, and check Manifest and Service Workers.
+1. **Manifest:** `src/app/manifest.ts` defines the app identity, standalone display, colors, scope, and install icons.
+2. **Icons:** `public/icon-192.png`, `icon-512.png`, `icon-maskable-512.png`, and `apple-touch-icon.png` provide standard, maskable, and iOS home-screen artwork.
+3. **iOS meta tags:** `src/app/layout.tsx` sets `appleWebApp` metadata and a `viewport` with `viewport-fit=cover`.
+4. **Service worker:** `public/sw.js` precaches the app shell and offline page, saves successful document navigations and hashed Next.js assets for later use, and clears old app caches on activation. `src/components/ServiceWorkerRegistration.tsx` registers it only in production. User data remains in IndexedDB and is never copied into the HTTP cache.
+5. **Test:** run `npm run build` then `npm start`, open in Chrome, press F12 -> **Application** tab, and check Manifest and Service Workers. Turn off the network to verify the offline page and previously opened pages.
 
 ---
 

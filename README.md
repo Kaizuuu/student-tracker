@@ -1,36 +1,45 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Student Tracker
 
-## Getting Started
+A free, mobile-first student planner built as a Progressive Web App. It is designed for personal use, with local-first data storage and no account required in the first two phases.
 
-First, run the development server:
+## Stack
+
+- Next.js App Router and TypeScript
+- Tailwind CSS
+- IndexedDB through `idb`
+- `date-fns` for date handling
+
+## Get started
+
+Requires Node.js LTS and npm.
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) to view the app.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Useful checks:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run lint
+npm run build
+```
 
-## Learn More
+## Project layout
 
-To learn more about Next.js, take a look at the following resources:
+```text
+src/
+  app/          App Router pages, layouts, and global styles
+  components/   Shared interface components
+  lib/          Shared utilities and the local data layer
+  types/        Shared TypeScript types
+public/         Static assets and, later, PWA files
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Keep screen code independent of storage details by reading and writing through the data layer in `src/lib`. This leaves room for optional sync later without tying screens to a database implementation.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Project plan
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Work through [`STUDENT_TRACKER_PLAN.md`](./STUDENT_TRACKER_PLAN.md) in order. Setup details and the hosting workflow are in [`STUDENT_TRACKER_SETUP.md`](./STUDENT_TRACKER_SETUP.md).
