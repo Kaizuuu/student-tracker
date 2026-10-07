@@ -3,6 +3,9 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { addRecord, deleteRecord, deleteTask, getRecords, updateRecord } from "@/lib/db";
+import EntryWizard from "@/components/EntryWizard";
+import ChoicePicker from "@/components/ChoicePicker";
+import DateTimePicker from "@/components/DateTimePicker";
 import { dueDateTextClasses, getDueDateTone } from "@/lib/dueDateTone";
 import { downloadCalendarItem } from "@/lib/ics";
 import type { SubtaskRecord, SubjectRecord, TaskPriority, TaskRecord } from "@/types/records";
@@ -69,6 +72,7 @@ export default function TasksManager() {
   const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<TaskForm>(EMPTY_FORM);
+  const [wizardStep, setWizardStep] = useState(0);
   const [formError, setFormError] = useState("");
   const [pageError, setPageError] = useState("");
   const [notice, setNotice] = useState("");
@@ -115,6 +119,7 @@ export default function TasksManager() {
   function startCreate() {
     setEditingId(null);
     setForm(EMPTY_FORM);
+    setWizardStep(0);
     setFormError("");
     setNotice("");
     setFormOpen(true);
@@ -129,6 +134,7 @@ export default function TasksManager() {
       priority: task.priority,
       notes: task.notes,
     });
+    setWizardStep(0);
     setFormError("");
     setNotice("");
     setFormOpen(true);
@@ -137,7 +143,26 @@ export default function TasksManager() {
   function closeForm() {
     setFormOpen(false);
     setEditingId(null);
+    setWizardStep(0);
     setFormError("");
+  }
+
+  function advanceWizard() {
+    if (wizardStep === 0 && !form.title.trim()) {
+      setFormError("Enter a task title before continuing.");
+      return;
+    }
+    setFormError("");
+    setWizardStep((step) => Math.min(step + 1, 2));
+  }
+
+  function handleWizardSubmit(event: FormEvent<HTMLFormElement>) {
+    if (wizardStep < 2) {
+      event.preventDefault();
+      advanceWizard();
+      return;
+    }
+    void handleTaskSubmit(event);
   }
 
   async function handleTaskSubmit(event: FormEvent<HTMLFormElement>) {
@@ -251,47 +276,64 @@ export default function TasksManager() {
       {notice && <p role="status" className="mt-6 rounded-xl bg-accent/10 px-4 py-3 text-sm font-medium">{notice}</p>}
 
       {formOpen && (
-        <form onSubmit={handleTaskSubmit} className="mt-8 rounded-3xl border border-border bg-surface p-6 sm:p-8">
-          <div className="flex items-center justify-between gap-4">
-            <h2 className="text-lg font-semibold">{editingId ? "Edit task" : "New task"}</h2>
-            <button type="button" onClick={closeForm} className="min-h-11 rounded-xl px-3 text-sm font-medium text-muted hover:bg-background hover:text-foreground focus-visible:outline-2 focus-visible:outline-accent">Cancel</button>
-          </div>
-          <div className="mt-5 grid gap-5 sm:grid-cols-2">
-            <div className="sm:col-span-2">
-              <label htmlFor="task-title" className="block text-sm font-medium">Task title</label>
-              <input id="task-title" autoFocus required maxLength={140} value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} placeholder="e.g. Finish biology lab report" className="mt-2 min-h-12 w-full rounded-xl border border-border bg-background px-4 text-base text-foreground outline-none placeholder:text-muted/70 focus:border-accent focus:ring-2 focus:ring-accent/20" />
-            </div>
-            <div>
-              <label htmlFor="task-due" className="block text-sm font-medium">Due date and time <span className="font-normal text-muted">(optional)</span></label>
-              <input id="task-due" type="datetime-local" value={form.dueAt} onChange={(event) => setForm({ ...form, dueAt: event.target.value })} className="mt-2 min-h-12 w-full rounded-xl border border-border bg-background px-4 text-base text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/20" />
-            </div>
-            <div>
-              <label htmlFor="task-subject" className="block text-sm font-medium">Subject <span className="font-normal text-muted">(optional)</span></label>
-              <select id="task-subject" value={form.subjectId} onChange={(event) => setForm({ ...form, subjectId: event.target.value })} className="mt-2 min-h-12 w-full rounded-xl border border-border bg-background px-4 text-base text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/20">
-                <option value="">No subject</option>
-                {subjects.map((subject) => <option key={subject.id} value={subject.id}>{subject.name}</option>)}
-              </select>
-              {subjects.length === 0 && <Link href="/subjects" className="mt-2 inline-block text-xs font-medium text-accent underline decoration-accent/40 underline-offset-2">Add subjects</Link>}
-            </div>
-            <fieldset className="sm:col-span-2">
-              <legend className="text-sm font-medium">Priority</legend>
-              <div className="mt-2 grid grid-cols-3 gap-2">
-                {PRIORITIES.map((priority) => (
-                  <button key={priority.value} type="button" aria-pressed={form.priority === priority.value} onClick={() => setForm({ ...form, priority: priority.value })} className={"min-h-11 rounded-xl border px-3 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent " + (form.priority === priority.value ? "border-accent bg-accent/10 text-foreground" : "border-border text-muted hover:bg-background")}>
-                    {priority.label}
-                  </button>
-                ))}
+        <form onSubmit={handleWizardSubmit} className="mt-8 rounded-3xl border border-border bg-surface p-5 sm:p-8">
+          <EntryWizard
+            title={editingId ? "Edit task" : "New task"}
+            step={wizardStep}
+            saving={saving}
+            saveLabel={editingId ? "Save changes" : "Save task"}
+            error={formError}
+            onBack={() => { setFormError(""); setWizardStep((step) => Math.max(step - 1, 0)); }}
+            onNext={advanceWizard}
+            onCancel={closeForm}
+          >
+            {wizardStep === 0 && (
+              <div className="grid gap-5">
+                <div>
+                  <label htmlFor="task-title" className="block text-sm font-medium">What do you need to do?</label>
+                  <input id="task-title" autoFocus required maxLength={140} value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} placeholder="e.g. Finish biology lab report" className="mt-2 min-h-12 w-full rounded-xl border border-border bg-background px-4 text-base text-foreground outline-none placeholder:text-muted/70 focus:border-accent focus:ring-2 focus:ring-accent/20" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium">When is it due? <span className="font-normal text-muted">(optional)</span></p>
+                  <DateTimePicker id="task-due" value={form.dueAt} onChange={(dueAt) => setForm({ ...form, dueAt })} />
+                </div>
               </div>
-            </fieldset>
-            <div className="sm:col-span-2">
-              <label htmlFor="task-notes" className="block text-sm font-medium">Notes <span className="font-normal text-muted">(optional)</span></label>
-              <textarea id="task-notes" rows={3} maxLength={2000} value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} placeholder="Add any details that will help you get started" className="mt-2 w-full resize-y rounded-xl border border-border bg-background px-4 py-3 text-base text-foreground outline-none placeholder:text-muted/70 focus:border-accent focus:ring-2 focus:ring-accent/20" />
-            </div>
-          </div>
-          {formError && <p role="alert" className="mt-4 text-sm font-medium text-red-600 dark:text-red-400">{formError}</p>}
-          <button type="submit" disabled={saving} className="mt-7 min-h-12 w-full rounded-xl bg-accent px-5 text-sm font-semibold text-accent-foreground transition-opacity hover:opacity-90 disabled:cursor-wait disabled:opacity-60 sm:w-auto sm:min-w-36">
-            {saving ? "Saving…" : editingId ? "Save changes" : "Save task"}
-          </button>
+            )}
+            {wizardStep === 1 && (
+              <div className="grid gap-5">
+                <div>
+                  <label htmlFor="task-subject" className="block text-sm font-medium">Subject <span className="font-normal text-muted">(optional)</span></label>
+                  <ChoicePicker id="task-subject" value={form.subjectId} options={[{ value: "", label: "No subject", marker: "—", description: "Keep this task unlinked" }, ...subjects.map((subject) => ({ value: subject.id, label: subject.name, description: [subject.room, subject.teacher].filter(Boolean).join(" · "), color: subject.color }))]} onChange={(subjectId) => setForm({ ...form, subjectId })} />
+                  {subjects.length === 0 && <Link href="/subjects" className="mt-2 inline-block text-xs font-medium text-accent underline decoration-accent/40 underline-offset-2">Add subjects</Link>}
+                </div>
+                <fieldset>
+                  <legend className="text-sm font-medium">Priority</legend>
+                  <div className="mt-2 grid grid-cols-3 gap-2">
+                    {PRIORITIES.map((priority) => (
+                      <button key={priority.value} type="button" aria-pressed={form.priority === priority.value} onClick={() => setForm({ ...form, priority: priority.value })} className={"min-h-11 rounded-xl border px-3 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent " + (form.priority === priority.value ? "border-accent bg-accent/10 text-foreground" : "border-border text-muted hover:bg-background")}>
+                        {priority.label}
+                      </button>
+                    ))}
+                  </div>
+                </fieldset>
+                <div>
+                  <label htmlFor="task-notes" className="block text-sm font-medium">Notes <span className="font-normal text-muted">(optional)</span></label>
+                  <textarea id="task-notes" rows={3} maxLength={2000} value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} placeholder="Add any details that will help you get started" className="mt-2 w-full resize-y rounded-xl border border-border bg-background px-4 py-3 text-base text-foreground outline-none placeholder:text-muted/70 focus:border-accent focus:ring-2 focus:ring-accent/20" />
+                </div>
+              </div>
+            )}
+            {wizardStep === 2 && (
+              <div>
+                <p className="text-sm text-muted">Check the details before saving.</p>
+                <dl className="mt-4 divide-y divide-border rounded-2xl border border-border bg-background px-4">
+                  <div className="py-3"><dt className="text-xs font-medium text-muted">Task</dt><dd className="mt-1 break-words text-sm font-semibold">{form.title.trim() || "Untitled task"}</dd></div>
+                  <div className="py-3"><dt className="text-xs font-medium text-muted">Due</dt><dd className="mt-1 text-sm">{form.dueAt ? new Date(form.dueAt).toLocaleString() : "No due date"}</dd></div>
+                  <div className="py-3"><dt className="text-xs font-medium text-muted">Subject and priority</dt><dd className="mt-1 text-sm">{subjects.find((subject) => subject.id === form.subjectId)?.name ?? "No subject"} · {form.priority}</dd></div>
+                  {form.notes.trim() && <div className="py-3"><dt className="text-xs font-medium text-muted">Notes</dt><dd className="mt-1 whitespace-pre-wrap break-words text-sm">{form.notes.trim()}</dd></div>}
+                </dl>
+              </div>
+            )}
+          </EntryWizard>
         </form>
       )}
 
@@ -331,6 +373,7 @@ export default function TasksManager() {
                       <div className="flex flex-wrap items-center gap-2">
                         <h2 className={"break-words font-semibold " + (task.completedAt ? "text-muted line-through" : "")}>{task.title}</h2>
                         <span className={"rounded-full px-2.5 py-1 text-[11px] font-semibold " + priorityClasses(task.priority)}>{task.priority} priority</span>
+                        {task.examReminderForId && <span className="rounded-full bg-accent/10 px-2.5 py-1 text-[11px] font-semibold text-accent">Exam prep</span>}
                       </div>
                       <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
                         <span className={dueDateTextClasses(task.completedAt ? "none" : getDueDateTone(task.dueAt))}>{formatDueAt(task.dueAt)}</span>

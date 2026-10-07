@@ -16,7 +16,7 @@ const tabs = [
 function TabIcon({ name }: { name: (typeof tabs)[number]["icon"] }) {
   const shared = {
     "aria-hidden": true as const,
-    className: "size-5",
+    className: "size-[1.35rem]",
     fill: "none",
     stroke: "currentColor",
     strokeLinecap: "round" as const,
@@ -39,42 +39,46 @@ function TabIcon({ name }: { name: (typeof tabs)[number]["icon"] }) {
 
 export default function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const renderTab = (tab: (typeof tabs)[number]) => {
+    const isActive = pathname === tab.href;
+    return (
+      <Link
+        key={tab.href}
+        href={tab.href}
+        aria-current={isActive ? "page" : undefined}
+        aria-label={tab.label}
+        title={tab.label}
+        className={`mx-1 my-1 flex min-h-14 flex-col items-center justify-center gap-1 rounded-2xl transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${isActive ? "text-accent" : "text-muted hover:bg-background/70 hover:text-foreground"}`}
+      >
+        <TabIcon name={tab.icon} />
+        <span className={`text-[10px] font-medium leading-none tracking-tight ${isActive ? "font-semibold" : ""}`}>{tab.label}</span>
+      </Link>
+    );
+  };
 
   return (
     <div className="flex min-h-dvh flex-col">
-      <header className="sticky top-0 z-20 border-b border-border bg-background/90 backdrop-blur-xl">
-        <div className="mx-auto flex h-16 w-full max-w-5xl items-center justify-between px-5 sm:px-8">
-          <Link href="/" className="flex min-h-11 items-center gap-3 rounded-xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent">
-            <span className="flex size-9 items-center justify-center rounded-xl bg-accent text-sm font-bold text-accent-foreground" aria-hidden="true">S</span>
-            <span className="text-sm font-semibold tracking-tight sm:text-base">Student Tracker</span>
+      <header className="sticky top-0 z-20 border-b border-border/70 bg-background/75 backdrop-blur-2xl supports-[backdrop-filter]:bg-background/60">
+        <div className="mx-auto flex h-[4.25rem] w-full max-w-5xl items-center justify-between px-5 sm:px-8">
+          <Link href="/" className="group flex min-h-11 items-center gap-3 rounded-xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent">
+            <span className="flex size-9 items-center justify-center rounded-[13px] bg-gradient-to-br from-accent to-[color-mix(in_srgb,var(--accent)_76%,black)] text-sm font-bold text-accent-foreground shadow-md shadow-accent/20 transition-transform group-hover:scale-105" aria-hidden="true">S</span>
+            <span className="text-[15px] font-semibold tracking-tight sm:text-base">Student Tracker</span>
           </Link>
           <ThemeToggle />
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-5xl flex-1 px-5 pb-28 pt-8 sm:px-8 sm:pt-12">
+      <main className="mx-auto w-full max-w-5xl flex-1 px-5 pb-32 pt-8 sm:px-8 sm:pb-36 sm:pt-12">
         {children}
       </main>
 
-      <nav aria-label="Main navigation" className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-surface/95 backdrop-blur-xl [padding-bottom:env(safe-area-inset-bottom)]">
-        <div className="mx-auto grid h-[4.5rem] max-w-lg grid-cols-4 px-2 sm:max-w-2xl sm:px-6">
-          {tabs.map((tab) => {
-            const isActive = pathname === tab.href;
-            return (
-              <Link
-                key={tab.href}
-                href={tab.href}
-                aria-current={isActive ? "page" : undefined}
-                className={`mx-1 my-1 flex min-h-11 flex-col items-center justify-center gap-1 rounded-xl text-xs font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${isActive ? "text-accent" : "text-muted hover:bg-background hover:text-foreground"}`}
-              >
-                <TabIcon name={tab.icon} />
-                <span>{tab.label}</span>
-              </Link>
-            );
-          })}
+      <nav aria-label="Main navigation" className="fixed inset-x-0 bottom-0 z-30 px-4 pb-[calc(env(safe-area-inset-bottom)+0.8rem)]">
+        <div className="mx-auto grid h-[4.65rem] w-full max-w-lg grid-cols-5 items-center rounded-[1.65rem] border border-white/70 bg-surface/85 px-2 shadow-[0_12px_44px_rgba(35,89,127,0.17)] backdrop-blur-2xl dark:border-white/10 sm:px-4">
+          {tabs.slice(0, 2).map(renderTab)}
+          <QuickAdd />
+          {tabs.slice(2).map(renderTab)}
         </div>
       </nav>
-      <QuickAdd />
     </div>
   );
 }

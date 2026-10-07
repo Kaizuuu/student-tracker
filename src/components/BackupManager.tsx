@@ -2,6 +2,7 @@
 
 import { useRef, useState, type ChangeEvent } from "react";
 import { importBackupRecords } from "@/lib/db";
+import ChoicePicker from "@/components/ChoicePicker";
 import { createBackup, MAX_BACKUP_FILE_BYTES, parseBackup } from "@/lib/backup";
 import type { BackupImportMode } from "@/types/backup";
 
@@ -11,6 +12,11 @@ function countSummary(counts: {
   tasks: number;
   subtasks: number;
   calendarEntries: number;
+  habits: number;
+  habitCompletions: number;
+  routineItems: number;
+  routineCompletions: number;
+  focusSessions: number;
 }) {
   return [
     `${counts.subjects} ${counts.subjects === 1 ? "subject" : "subjects"}`,
@@ -18,6 +24,11 @@ function countSummary(counts: {
     `${counts.tasks} ${counts.tasks === 1 ? "task" : "tasks"}`,
     `${counts.subtasks} ${counts.subtasks === 1 ? "subtask" : "subtasks"}`,
     `${counts.calendarEntries} ${counts.calendarEntries === 1 ? "exam/event" : "exams/events"}`,
+    `${counts.habits} ${counts.habits === 1 ? "habit" : "habits"}`,
+    `${counts.habitCompletions} ${counts.habitCompletions === 1 ? "check-in" : "check-ins"}`,
+    `${counts.routineItems} ${counts.routineItems === 1 ? "routine step" : "routine steps"}`,
+    `${counts.routineCompletions} ${counts.routineCompletions === 1 ? "routine check-in" : "routine check-ins"}`,
+    `${counts.focusSessions} ${counts.focusSessions === 1 ? "focus session" : "focus sessions"}`,
   ].join(", ");
 }
 
@@ -51,6 +62,11 @@ export default function BackupManager() {
         tasks: backup.records.tasks.length,
         subtasks: backup.records.subtasks.length,
         calendarEntries: backup.records.calendarEntries.length,
+        habits: backup.records.habits.length,
+        habitCompletions: backup.records.habitCompletions.length,
+        routineItems: backup.records.routineItems.length,
+        routineCompletions: backup.records.routineCompletions.length,
+        focusSessions: backup.records.focusSessions.length,
       })}.` });
     } catch (error) {
       setFeedback({ type: "error", text: errorMessage(error) });
@@ -75,7 +91,7 @@ export default function BackupManager() {
     try {
       const backup = parseBackup(await file.text());
       if (mode === "replace") {
-        const accepted = window.confirm("Replace all subjects, classes, tasks, subtasks, exams, and events on this device with this backup? This cannot be undone.");
+        const accepted = window.confirm("Replace all subjects, classes, tasks, subtasks, exams, events, habits, routines, and focus logs on this device with this backup? This cannot be undone.");
         if (!accepted) return;
       }
 
@@ -93,7 +109,7 @@ export default function BackupManager() {
     <section aria-labelledby="backup-heading" className="mt-8 rounded-3xl border border-border bg-surface p-5 sm:p-7">
       <p className="text-xs font-semibold uppercase tracking-[0.16em] text-accent">Keep your data safe</p>
       <h2 id="backup-heading" className="mt-1 text-xl font-semibold">Backup and restore</h2>
-      <p className="mt-2 max-w-xl text-sm leading-6 text-muted">Save all your subjects, classes, tasks, subtasks, exams, and events to a JSON file. Keep a copy somewhere safe in case your device clears its local data.</p>
+      <p className="mt-2 max-w-xl text-sm leading-6 text-muted">Save your subjects, classes, tasks, subtasks, exams, events, habits, routines, and focus sessions to a JSON file. Keep a copy somewhere safe in case your device clears its local data.</p>
 
       <div className="mt-5 grid gap-4 sm:grid-cols-2">
         <div className="rounded-2xl border border-border p-4">
@@ -105,10 +121,7 @@ export default function BackupManager() {
         <div className="rounded-2xl border border-border p-4">
           <h3 className="font-semibold">Import a backup</h3>
           <label htmlFor="backup-import-mode" className="mt-3 block text-sm font-medium">Import mode</label>
-          <select id="backup-import-mode" value={mode} onChange={(event) => setMode(event.target.value as BackupImportMode)} disabled={busy} className="mt-2 min-h-11 w-full rounded-xl border border-border bg-background px-3 text-sm text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/20">
-            <option value="merge">Merge with this device</option>
-            <option value="replace">Replace all device data</option>
-          </select>
+          <ChoicePicker id="backup-import-mode" value={mode} disabled={busy} options={[{ value: "merge", label: "Merge with this device", marker: "+", color: "#347FAE", description: "Keep current items and add backup data" }, { value: "replace", label: "Replace all device data", marker: "↻", color: "#D85880", description: "Use only the data in this backup" }]} onChange={(value) => setMode(value as BackupImportMode)} />
           <p className="mt-2 min-h-12 text-xs leading-5 text-muted">{mode === "merge" ? "Matching IDs are updated; other current items are kept." : "All current items are replaced by the backup after confirmation."}</p>
           <input ref={inputRef} type="file" accept=".json,application/json" onChange={(event) => void importBackup(event)} className="sr-only" />
           <button type="button" onClick={() => inputRef.current?.click()} disabled={busy} className="mt-2 min-h-11 w-full rounded-xl border border-border px-4 text-sm font-semibold transition-colors hover:bg-background disabled:cursor-wait disabled:opacity-60">{busy ? "Working…" : "Choose backup file"}</button>

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { addRecord } from "@/lib/db";
+import DateTimePicker from "@/components/DateTimePicker";
 import type { CalendarEntryKind } from "@/types/records";
 
 type QuickAddKind = "task" | CalendarEntryKind;
@@ -129,9 +130,9 @@ export default function QuickAdd() {
 
   return (
     <>
-      <div className="fixed right-5 z-40" style={{ bottom: "calc(5.25rem + env(safe-area-inset-bottom))" }}>
+      <div className="relative flex h-full flex-col items-center justify-center">
         {menuOpen && (
-          <div id="quick-add-options" className="mb-3 w-52 rounded-2xl border border-border bg-surface p-2 shadow-xl" aria-label="Quick add options">
+          <div id="quick-add-options" className="absolute bottom-full left-1/2 z-50 mb-2 w-52 -translate-x-1/2 rounded-2xl border border-border bg-surface p-2 shadow-xl" aria-label="Quick add options">
             <p className="px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted">Add quickly</p>
             <button type="button" onClick={() => openForm("task")} className="flex min-h-11 w-full items-center rounded-xl px-3 text-left text-sm font-medium hover:bg-background focus-visible:outline-2 focus-visible:outline-accent">Task</button>
             <button type="button" onClick={() => openForm("exam")} className="flex min-h-11 w-full items-center rounded-xl px-3 text-left text-sm font-medium hover:bg-background focus-visible:outline-2 focus-visible:outline-accent">Exam</button>
@@ -140,13 +141,20 @@ export default function QuickAdd() {
         )}
         <button
           type="button"
-          aria-label={menuOpen ? "Close quick add menu" : "Quick add"}
+          aria-label={menuOpen ? "Close quick add menu" : "Add a task, exam, or event"}
           aria-expanded={menuOpen}
           aria-controls="quick-add-options"
           onClick={() => setMenuOpen((open) => !open)}
-          className="ml-auto flex size-14 items-center justify-center rounded-full bg-accent text-3xl font-light leading-none text-accent-foreground shadow-lg shadow-black/15 transition-transform hover:scale-105 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
+          className="z-10 flex size-14 -translate-y-4 items-center justify-center rounded-full border-4 border-surface bg-accent text-accent-foreground shadow-lg shadow-black/15 transition-transform hover:scale-105 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
         >
-          <span aria-hidden="true">{menuOpen ? "×" : "+"}</span>
+          <svg
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+            className={`size-6 shrink-0 transition-transform duration-200 ${menuOpen ? "rotate-45" : ""}`}
+            fill="none"
+          >
+            <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" />
+          </svg>
         </button>
       </div>
 
@@ -175,14 +183,14 @@ export default function QuickAdd() {
 
               {activeKind === "task" ? (
                 <div>
-                  <label htmlFor="quick-add-due" className="block text-sm font-medium">Due date <span className="font-normal text-muted">(optional)</span></label>
-                  <input id="quick-add-due" type="datetime-local" value={dueAt} onChange={(event) => setDueAt(event.target.value)} className="mt-2 min-h-12 w-full rounded-xl border border-border bg-background px-4 text-base text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/20" />
+                  <p className="text-sm font-medium">Due date <span className="font-normal text-muted">(optional)</span></p>
+                  <DateTimePicker id="quick-add-due" value={dueAt} onChange={setDueAt} />
                 </div>
               ) : (
                 <>
                   <div>
-                    <label htmlFor="quick-add-start" className="block text-sm font-medium">Date and time</label>
-                    <input id="quick-add-start" type="datetime-local" required value={startsAt} onChange={(event) => setStartsAt(event.target.value)} className="mt-2 min-h-12 w-full rounded-xl border border-border bg-background px-4 text-base text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/20" />
+                    <p className="text-sm font-medium">Date and time</p>
+                    <DateTimePicker id="quick-add-start" required value={startsAt} onChange={setStartsAt} />
                   </div>
                   <div>
                     <label htmlFor="quick-add-location" className="block text-sm font-medium">Location <span className="font-normal text-muted">(optional)</span></label>

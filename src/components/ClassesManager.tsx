@@ -3,6 +3,10 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { addRecord, deleteRecord, getRecords, updateRecord } from "@/lib/db";
+import EntryWizard from "@/components/EntryWizard";
+import ChoicePicker from "@/components/ChoicePicker";
+import ScheduleImageImport from "@/components/ScheduleImageImport";
+import TimePicker from "@/components/TimePicker";
 import type { ClassRecord, SubjectRecord } from "@/types/records";
 
 const WEEKDAYS = [
@@ -28,6 +32,8 @@ const EMPTY_FORM: ClassForm = {
   teacher: "",
 };
 
+const CLASS_DAY_OPTIONS = WEEKDAYS.map((day) => ({ value: String(day.value), label: day.label, marker: day.short.slice(0, 1) }));
+
 function formatTime(value: string) {
   const [hours, minutes] = value.split(":").map(Number);
   return new Date(2000, 0, 1, hours, minutes).toLocaleTimeString([], {
@@ -43,8 +49,10 @@ export default function ClassesManager() {
   const [today, setToday] = useState<number | null>(null);
   const [selectedDay, setSelectedDay] = useState(1);
   const [formOpen, setFormOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<ClassForm>(EMPTY_FORM);
+  const [wizardStep, setWizardStep] = useState(0);
   const [formError, setFormError] = useState("");
   const [pageError, setPageError] = useState("");
   const [saving, setSaving] = useState(false);
@@ -89,6 +97,7 @@ export default function ClassesManager() {
   function openCreate(day = selectedDay) {
     setEditingId(null);
     setForm({ ...EMPTY_FORM, subjectId: subjects[0]?.id ?? "", dayOfWeek: day });
+    setWizardStep(0);
     setFormError("");
     setNotice("");
     setFormOpen(true);
@@ -104,6 +113,7 @@ export default function ClassesManager() {
       room: classItem.room,
       teacher: classItem.teacher,
     });
+    setWizardStep(0);
     setFormError("");
     setNotice("");
     setFormOpen(true);
@@ -112,7 +122,32 @@ export default function ClassesManager() {
   function closeForm() {
     setFormOpen(false);
     setEditingId(null);
+    setWizardStep(0);
     setFormError("");
+  }
+
+  function advanceWizard() {
+    if (wizardStep === 0) {
+      if (!form.subjectId) {
+        setFormError("Choose a subject before continuing.");
+        return;
+      }
+      if (form.startTime >= form.endTime) {
+        setFormError("The end time must be later than the start time.");
+        return;
+      }
+    }
+    setFormError("");
+    setWizardStep((step) => Math.min(step + 1, 2));
+  }
+
+  function handleWizardSubmit(event: FormEvent<HTMLFormElement>) {
+    if (wizardStep < 2) {
+      event.preventDefault();
+      advanceWizard();
+      return;
+    }
+    void handleSubmit(event);
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -162,6 +197,45 @@ export default function ClassesManager() {
     }
   }
 
+  async function handleImportSave(
+    drafts: Array<{ subjectText: string; subjectId: string; dayOfWeek: number; startTime: string; endTime: string; room: string; teacher: string }>,
+    newSubjectNames: Set<string>,
+  ) {
+    const subjectByName = new Map(subjects.map((subject) => [subject.name.trim().toLocaleLowerCase(), subject.id]));
+    for (const name of newSubjectNames) {
+      const cleanName = name.trim();
+      const key = cleanName.toLocaleLowerCase();
+      if (!cleanName || subjectByName.has(key)) continue;
+      const created = await addRecord("subjects", {
+        name: cleanName,
+        color: "#4D7CFE",
+        notes: "",
+        links: [],
+        room: "",
+        teacher: "",
+      });
+      subjectByName.set(key, created.id);
+    }
+
+    for (const draft of drafts) {
+      const subjectId = draft.subjectId || subjectByName.get(draft.subjectText.trim().toLocaleLowerCase());
+      if (!subjectId) continue;
+      await addRecord("classes", {
+        subjectId,
+        dayOfWeek: draft.dayOfWeek,
+        startTime: draft.startTime,
+        endTime: draft.endTime,
+        room: draft.room.trim(),
+        teacher: draft.teacher.trim(),
+      });
+    }
+
+    setImportOpen(false);
+    setSelectedDay(drafts[0]?.dayOfWeek ?? selectedDay);
+    setNotice(`${drafts.length} ${drafts.length === 1 ? "class was" : "classes were"} imported into your weekly schedule.`);
+    await refreshSchedule();
+  }
+
   const dayName = WEEKDAYS.find((day) => day.value === selectedDay)?.label ?? "Monday";
 
   return (
@@ -172,63 +246,76 @@ export default function ClassesManager() {
           <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Classes</h1>
           <p className="mt-3 max-w-lg text-base leading-7 text-muted">A clear view of what meets each day, week after week.</p>
         </div>
-        {subjects.length > 0 && !formOpen && (
-          <button
-            type="button"
-            onClick={() => openCreate()}
-            className="min-h-11 rounded-xl bg-accent px-5 text-sm font-semibold text-accent-foreground transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-          >
-            Add class
-          </button>
+        {!formOpen && (
+          <div className="flex flex-wrap gap-2">
+            <button type="button" onClick={() => { setImportOpen((open) => !open); setNotice(""); }} className="min-h-11 rounded-xl border border-border px-4 text-sm font-semibold hover:bg-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">{importOpen ? "Close import" : "Import screenshot"}</button>
+            {subjects.length > 0 && <button type="button" onClick={() => openCreate()} className="min-h-11 rounded-xl bg-accent px-5 text-sm font-semibold text-accent-foreground transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">Add class</button>}
+          </div>
         )}
       </div>
 
       {pageError && <p role="alert" className="mt-6 rounded-xl border border-red-500/30 bg-red-500/5 px-4 py-3 text-sm text-red-700 dark:text-red-300">{pageError}</p>}
       {notice && <p role="status" className="mt-6 rounded-xl bg-accent/10 px-4 py-3 text-sm font-medium">{notice}</p>}
 
+      {importOpen && !formOpen && <ScheduleImageImport subjects={subjects} existingClasses={classes} onClose={() => setImportOpen(false)} onSave={handleImportSave} />}
+
       {formOpen && (
-        <form onSubmit={handleSubmit} className="mt-8 rounded-3xl border border-border bg-surface p-6 sm:p-8">
-          <div className="flex items-center justify-between gap-4">
-            <h2 className="text-lg font-semibold">{editingId ? "Edit class" : "Add a weekly class"}</h2>
-            <button type="button" onClick={closeForm} className="min-h-11 rounded-xl px-3 text-sm font-medium text-muted hover:bg-background hover:text-foreground focus-visible:outline-2 focus-visible:outline-accent">Cancel</button>
-          </div>
-
-          <div className="mt-5 grid gap-5 sm:grid-cols-2">
-            <div className="sm:col-span-2">
-              <label htmlFor="class-subject" className="block text-sm font-medium">Subject</label>
-              <select id="class-subject" required value={form.subjectId} onChange={(event) => setForm({ ...form, subjectId: event.target.value })} className="mt-2 min-h-12 w-full rounded-xl border border-border bg-background px-4 text-base text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/20">
-                <option value="" disabled>Choose a subject</option>
-                {subjects.map((subject) => <option key={subject.id} value={subject.id}>{subject.name}</option>)}
-              </select>
-            </div>
-            <div className="sm:col-span-2">
-              <label htmlFor="class-day" className="block text-sm font-medium">Repeats every</label>
-              <select id="class-day" value={form.dayOfWeek} onChange={(event) => setForm({ ...form, dayOfWeek: Number(event.target.value) })} className="mt-2 min-h-12 w-full rounded-xl border border-border bg-background px-4 text-base text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/20">
-                {WEEKDAYS.map((day) => <option key={day.value} value={day.value}>{day.label}</option>)}
-              </select>
-            </div>
-            <div>
-              <label htmlFor="class-start" className="block text-sm font-medium">Starts</label>
-              <input id="class-start" type="time" required value={form.startTime} onChange={(event) => setForm({ ...form, startTime: event.target.value })} className="mt-2 min-h-12 w-full rounded-xl border border-border bg-background px-4 text-base text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/20" />
-            </div>
-            <div>
-              <label htmlFor="class-end" className="block text-sm font-medium">Ends</label>
-              <input id="class-end" type="time" required value={form.endTime} onChange={(event) => setForm({ ...form, endTime: event.target.value })} className="mt-2 min-h-12 w-full rounded-xl border border-border bg-background px-4 text-base text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/20" />
-            </div>
-            <div>
-              <label htmlFor="class-room" className="block text-sm font-medium">Room <span className="font-normal text-muted">(optional)</span></label>
-              <input id="class-room" maxLength={60} value={form.room} onChange={(event) => setForm({ ...form, room: event.target.value })} placeholder="e.g. Science 204" className="mt-2 min-h-12 w-full rounded-xl border border-border bg-background px-4 text-base text-foreground outline-none placeholder:text-muted/70 focus:border-accent focus:ring-2 focus:ring-accent/20" />
-            </div>
-            <div>
-              <label htmlFor="class-teacher" className="block text-sm font-medium">Teacher <span className="font-normal text-muted">(optional)</span></label>
-              <input id="class-teacher" maxLength={80} value={form.teacher} onChange={(event) => setForm({ ...form, teacher: event.target.value })} placeholder="Teacher name" className="mt-2 min-h-12 w-full rounded-xl border border-border bg-background px-4 text-base text-foreground outline-none placeholder:text-muted/70 focus:border-accent focus:ring-2 focus:ring-accent/20" />
-            </div>
-          </div>
-
-          {formError && <p role="alert" className="mt-4 text-sm font-medium text-red-600 dark:text-red-400">{formError}</p>}
-          <button type="submit" disabled={saving} className="mt-7 min-h-12 w-full rounded-xl bg-accent px-5 text-sm font-semibold text-accent-foreground transition-opacity hover:opacity-90 disabled:cursor-wait disabled:opacity-60 sm:w-auto sm:min-w-36">
-            {saving ? "Saving…" : editingId ? "Save changes" : "Add to schedule"}
-          </button>
+        <form onSubmit={handleWizardSubmit} className="mt-8 rounded-3xl border border-border bg-surface p-5 sm:p-8">
+          <EntryWizard
+            title={editingId ? "Edit class" : "Add a weekly class"}
+            step={wizardStep}
+            saving={saving}
+            saveLabel={editingId ? "Save changes" : "Add to schedule"}
+            error={formError}
+            onBack={() => { setFormError(""); setWizardStep((step) => Math.max(step - 1, 0)); }}
+            onNext={advanceWizard}
+            onCancel={closeForm}
+          >
+            {wizardStep === 0 && (
+              <div className="grid gap-5">
+                <div>
+                  <label htmlFor="class-subject" className="block text-sm font-medium">Subject</label>
+                  <ChoicePicker id="class-subject" value={form.subjectId} placeholder="Choose a subject" options={subjects.map((subject) => ({ value: subject.id, label: subject.name, description: [subject.room, subject.teacher].filter(Boolean).join(" · "), color: subject.color }))} onChange={(subjectId) => setForm({ ...form, subjectId })} />
+                </div>
+                <div>
+                  <label htmlFor="class-day" className="block text-sm font-medium">Repeats every</label>
+                  <ChoicePicker id="class-day" value={String(form.dayOfWeek)} options={CLASS_DAY_OPTIONS} onChange={(value) => setForm({ ...form, dayOfWeek: Number(value) })} />
+                </div>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div>
+                    <label htmlFor="class-start" className="block text-sm font-medium">Starts</label>
+                    <TimePicker id="class-start" value={form.startTime} onChange={(startTime) => setForm({ ...form, startTime })} />
+                  </div>
+                  <div>
+                    <label htmlFor="class-end" className="block text-sm font-medium">Ends</label>
+                    <TimePicker id="class-end" value={form.endTime} onChange={(endTime) => setForm({ ...form, endTime })} />
+                  </div>
+                </div>
+              </div>
+            )}
+            {wizardStep === 1 && (
+              <div className="grid gap-5">
+                <div>
+                  <label htmlFor="class-room" className="block text-sm font-medium">Room <span className="font-normal text-muted">(optional)</span></label>
+                  <input id="class-room" maxLength={60} value={form.room} onChange={(event) => setForm({ ...form, room: event.target.value })} placeholder="e.g. Science 204" className="mt-2 min-h-12 w-full rounded-xl border border-border bg-background px-4 text-base text-foreground outline-none placeholder:text-muted/70 focus:border-accent focus:ring-2 focus:ring-accent/20" />
+                </div>
+                <div>
+                  <label htmlFor="class-teacher" className="block text-sm font-medium">Teacher <span className="font-normal text-muted">(optional)</span></label>
+                  <input id="class-teacher" maxLength={80} value={form.teacher} onChange={(event) => setForm({ ...form, teacher: event.target.value })} placeholder="Teacher name" className="mt-2 min-h-12 w-full rounded-xl border border-border bg-background px-4 text-base text-foreground outline-none placeholder:text-muted/70 focus:border-accent focus:ring-2 focus:ring-accent/20" />
+                </div>
+              </div>
+            )}
+            {wizardStep === 2 && (
+              <div>
+                <p className="text-sm text-muted">Check the weekly schedule before saving.</p>
+                <dl className="mt-4 divide-y divide-border rounded-2xl border border-border bg-background px-4">
+                  <div className="py-3"><dt className="text-xs font-medium text-muted">Subject</dt><dd className="mt-1 break-words text-sm font-semibold">{subjects.find((subject) => subject.id === form.subjectId)?.name ?? "No subject"}</dd></div>
+                  <div className="py-3"><dt className="text-xs font-medium text-muted">Repeats</dt><dd className="mt-1 text-sm">{WEEKDAYS.find((day) => day.value === form.dayOfWeek)?.label ?? "Monday"}, {formatTime(form.startTime)}–{formatTime(form.endTime)}</dd></div>
+                  {(form.room.trim() || form.teacher.trim()) && <div className="py-3"><dt className="text-xs font-medium text-muted">More details</dt><dd className="mt-1 break-words text-sm">{[form.room.trim(), form.teacher.trim()].filter(Boolean).join(" · ")}</dd></div>}
+                </dl>
+              </div>
+            )}
+          </EntryWizard>
         </form>
       )}
 

@@ -3,8 +3,13 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { differenceInCalendarDays, format, parseISO } from "date-fns";
 import { addRecord, deleteRecord, getRecords, updateRecord } from "@/lib/db";
+import EntryWizard from "@/components/EntryWizard";
+import ChoicePicker from "@/components/ChoicePicker";
+import DatePicker from "@/components/DatePicker";
+import TimePicker from "@/components/TimePicker";
 import { dueDateBadgeClasses, dueDateTextClasses, getDueDateTone } from "@/lib/dueDateTone";
 import { downloadCalendarItem } from "@/lib/ics";
+import { initializeUnmarkedExamReminders, syncExamStudyReminders } from "@/lib/examReminders";
 import type { CalendarEntryKind, CalendarEntryRecord, SubjectRecord } from "@/types/records";
 
 type EntryForm = {
@@ -67,6 +72,7 @@ export default function CalendarEntriesManager() {
   const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<EntryForm>(EMPTY_FORM);
+  const [wizardStep, setWizardStep] = useState(0);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
   const [pageError, setPageError] = useState("");
@@ -78,6 +84,7 @@ export default function CalendarEntriesManager() {
         getRecords("calendarEntries"),
         getRecords("subjects"),
       ]);
+      await initializeUnmarkedExamReminders(nextEntries);
       setEntries(nextEntries.sort((left, right) => left.startsAt.localeCompare(right.startsAt)));
       setSubjects(nextSubjects.sort((left, right) => left.name.localeCompare(right.name)));
       setPageError("");
@@ -103,6 +110,7 @@ export default function CalendarEntriesManager() {
   function openCreate(kind: CalendarEntryKind = "exam") {
     setEditingId(null);
     setForm({ ...EMPTY_FORM, kind, date: format(new Date(), "yyyy-MM-dd") });
+    setWizardStep(0);
     setFormError("");
     setNotice("");
     setFormOpen(true);
@@ -120,6 +128,7 @@ export default function CalendarEntriesManager() {
       location: entry.location,
       notes: entry.notes,
     });
+    setWizardStep(0);
     setFormError("");
     setNotice("");
     setFormOpen(true);
@@ -128,7 +137,32 @@ export default function CalendarEntriesManager() {
   function closeForm() {
     setFormOpen(false);
     setEditingId(null);
+    setWizardStep(0);
     setFormError("");
+  }
+
+  function advanceWizard() {
+    if (wizardStep === 0) {
+      if (!form.title.trim()) {
+        setFormError("Enter a title before continuing.");
+        return;
+      }
+      if (!form.date || !form.time || Number.isNaN(new Date(`${form.date}T${form.time}`).getTime())) {
+        setFormError("Choose a valid date and time before continuing.");
+        return;
+      }
+    }
+    setFormError("");
+    setWizardStep((step) => Math.min(step + 1, 2));
+  }
+
+  function handleWizardSubmit(event: FormEvent<HTMLFormElement>) {
+    if (wizardStep < 2) {
+      event.preventDefault();
+      advanceWizard();
+      return;
+    }
+    void handleSubmit(event);
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -162,13 +196,17 @@ export default function CalendarEntriesManager() {
     };
 
     try {
+      let savedEntry: CalendarEntryRecord;
       if (editingId) {
-        await updateRecord("calendarEntries", editingId, fields);
+        savedEntry = await updateRecord("calendarEntries", editingId, fields);
       } else {
-        await addRecord("calendarEntries", fields);
+        savedEntry = await addRecord("calendarEntries", fields);
       }
+      await syncExamStudyReminders(savedEntry);
       closeForm();
-      setNotice(wasEditing ? `${kindLabel(form.kind)} updated.` : `${kindLabel(form.kind)} added.`);
+      setNotice(wasEditing
+        ? `${kindLabel(form.kind)} updated.${form.kind === "exam" ? " Study prep tasks are set for 7, 3, and 1 days before." : ""}`
+        : `${kindLabel(form.kind)} added.${form.kind === "exam" ? " Study prep tasks are set for 7, 3, and 1 days before." : ""}`);
       await refreshEntries();
     } catch {
       setFormError(`The ${form.kind} could not be saved. Try again.`);
@@ -221,7 +259,7 @@ export default function CalendarEntriesManager() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Exams &amp; events</h1>
-          <p className="mt-3 max-w-lg text-base leading-7 text-muted">Keep important dates, places, and details together. Export a date with reminders 1 day and 1 hour before.</p>
+          <p className="mt-3 max-w-lg text-base leading-7 text-muted">Keep important dates, places, and details together. Exams add study tasks 7, 3, and 1 days before; calendar exports include alerts 1 day and 1 hour before.</p>
         </div>
         {!formOpen && (
           <div className="flex w-full flex-wrap gap-2 sm:w-auto">
@@ -235,51 +273,67 @@ export default function CalendarEntriesManager() {
       {notice && <p role="status" className="mt-6 rounded-xl bg-accent/10 px-4 py-3 text-sm font-medium">{notice}</p>}
 
       {formOpen && (
-        <form onSubmit={handleSubmit} className="mt-8 rounded-3xl border border-border bg-surface p-5 sm:p-8">
-          <div className="flex items-center justify-between gap-4">
-            <h2 className="text-lg font-semibold">{editingId ? `Edit ${form.kind}` : `Add an ${form.kind === "exam" ? "exam" : "event"}`}</h2>
-            <button type="button" onClick={closeForm} className="min-h-11 rounded-xl px-3 text-sm font-medium text-muted hover:bg-background hover:text-foreground focus-visible:outline-2 focus-visible:outline-accent">Cancel</button>
-          </div>
-
-          <div className="mt-5 grid gap-5 sm:grid-cols-2">
-            <div>
-              <label htmlFor="entry-kind" className="block text-sm font-medium">Type</label>
-              <select id="entry-kind" value={form.kind} onChange={(event) => setForm({ ...form, kind: event.target.value as CalendarEntryKind })} className="mt-2 min-h-12 w-full rounded-xl border border-border bg-background px-4 text-base text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/20">
-                <option value="exam">Exam</option>
-                <option value="event">Event</option>
-              </select>
-            </div>
-            <div>
-              <label htmlFor="entry-title" className="block text-sm font-medium">Title</label>
-              <input id="entry-title" required maxLength={140} value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} placeholder={form.kind === "exam" ? "e.g. Biology final" : "e.g. Science fair"} className="mt-2 min-h-12 w-full rounded-xl border border-border bg-background px-4 text-base text-foreground outline-none placeholder:text-muted/70 focus:border-accent focus:ring-2 focus:ring-accent/20" />
-            </div>
-            <div>
-              <label htmlFor="entry-date" className="block text-sm font-medium">Date</label>
-              <input id="entry-date" type="date" required value={form.date} onChange={(event) => setForm({ ...form, date: event.target.value })} className="mt-2 min-h-12 w-full rounded-xl border border-border bg-background px-4 text-base text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/20" />
-            </div>
-            <div>
-              <label htmlFor="entry-time" className="block text-sm font-medium">Time</label>
-              <input id="entry-time" type="time" required value={form.time} onChange={(event) => setForm({ ...form, time: event.target.value })} className="mt-2 min-h-12 w-full rounded-xl border border-border bg-background px-4 text-base text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/20" />
-            </div>
-            <div>
-              <label htmlFor="entry-location" className="block text-sm font-medium">Location <span className="font-normal text-muted">(optional)</span></label>
-              <input id="entry-location" maxLength={120} value={form.location} onChange={(event) => setForm({ ...form, location: event.target.value })} placeholder="Room or address" className="mt-2 min-h-12 w-full rounded-xl border border-border bg-background px-4 text-base text-foreground outline-none placeholder:text-muted/70 focus:border-accent focus:ring-2 focus:ring-accent/20" />
-            </div>
-            <div>
-              <label htmlFor="entry-subject" className="block text-sm font-medium">Subject <span className="font-normal text-muted">(optional)</span></label>
-              <select id="entry-subject" value={form.subjectId} onChange={(event) => setForm({ ...form, subjectId: event.target.value })} className="mt-2 min-h-12 w-full rounded-xl border border-border bg-background px-4 text-base text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/20">
-                <option value="">No subject</option>
-                {subjects.map((subject) => <option key={subject.id} value={subject.id}>{subject.name}</option>)}
-              </select>
-            </div>
-            <div className="sm:col-span-2">
-              <label htmlFor="entry-notes" className="block text-sm font-medium">Notes <span className="font-normal text-muted">(optional)</span></label>
-              <textarea id="entry-notes" rows={3} maxLength={2000} value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} placeholder="Add details to remember" className="mt-2 w-full resize-y rounded-xl border border-border bg-background px-4 py-3 text-base text-foreground outline-none placeholder:text-muted/70 focus:border-accent focus:ring-2 focus:ring-accent/20" />
-            </div>
-          </div>
-
-          {formError && <p role="alert" className="mt-4 text-sm font-medium text-red-600 dark:text-red-400">{formError}</p>}
-          <button type="submit" disabled={saving} className="mt-7 min-h-12 w-full rounded-xl bg-accent px-5 text-sm font-semibold text-accent-foreground transition-opacity hover:opacity-90 disabled:cursor-wait disabled:opacity-60 sm:w-auto sm:min-w-36">{saving ? "Saving…" : editingId ? "Save changes" : "Save date"}</button>
+        <form onSubmit={handleWizardSubmit} className="mt-8 rounded-3xl border border-border bg-surface p-5 sm:p-8">
+          <EntryWizard
+            title={editingId ? `Edit ${form.kind}` : `Add an ${form.kind === "exam" ? "exam" : "event"}`}
+            step={wizardStep}
+            saving={saving}
+            saveLabel={editingId ? "Save changes" : "Save date"}
+            error={formError}
+            onBack={() => { setFormError(""); setWizardStep((step) => Math.max(step - 1, 0)); }}
+            onNext={advanceWizard}
+            onCancel={closeForm}
+          >
+            {wizardStep === 0 && (
+              <div className="grid gap-5">
+                <div>
+                  <label htmlFor="entry-kind" className="block text-sm font-medium">What are you adding?</label>
+                  <ChoicePicker id="entry-kind" value={form.kind} options={[{ value: "exam", label: "Exam", marker: "E", color: "#DB6B70", description: "Test, quiz, or assessment" }, { value: "event", label: "Event", marker: "✦", color: "#347FAE", description: "A date to remember" }]} onChange={(kind) => setForm({ ...form, kind: kind as CalendarEntryKind })} />
+                </div>
+                <div>
+                  <label htmlFor="entry-title" className="block text-sm font-medium">Title</label>
+                  <input id="entry-title" autoFocus required maxLength={140} value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} placeholder={form.kind === "exam" ? "e.g. Biology final" : "e.g. Science fair"} className="mt-2 min-h-12 w-full rounded-xl border border-border bg-background px-4 text-base text-foreground outline-none placeholder:text-muted/70 focus:border-accent focus:ring-2 focus:ring-accent/20" />
+                </div>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div>
+                    <label htmlFor="entry-date" className="block text-sm font-medium">Date</label>
+                    <DatePicker id="entry-date" required value={form.date} onChange={(date) => setForm({ ...form, date })} />
+                  </div>
+                  <div>
+                    <label htmlFor="entry-time" className="block text-sm font-medium">Time</label>
+                    <TimePicker id="entry-time" value={form.time} onChange={(time) => setForm({ ...form, time })} />
+                  </div>
+                </div>
+              </div>
+            )}
+            {wizardStep === 1 && (
+              <div className="grid gap-5">
+                <div>
+                  <label htmlFor="entry-location" className="block text-sm font-medium">Location <span className="font-normal text-muted">(optional)</span></label>
+                  <input id="entry-location" maxLength={120} value={form.location} onChange={(event) => setForm({ ...form, location: event.target.value })} placeholder="Room or address" className="mt-2 min-h-12 w-full rounded-xl border border-border bg-background px-4 text-base text-foreground outline-none placeholder:text-muted/70 focus:border-accent focus:ring-2 focus:ring-accent/20" />
+                </div>
+                <div>
+                  <label htmlFor="entry-subject" className="block text-sm font-medium">Subject <span className="font-normal text-muted">(optional)</span></label>
+                  <ChoicePicker id="entry-subject" value={form.subjectId} options={[{ value: "", label: "No subject", marker: "—", description: "Keep this item unlinked" }, ...subjects.map((subject) => ({ value: subject.id, label: subject.name, description: [subject.room, subject.teacher].filter(Boolean).join(" · "), color: subject.color }))]} onChange={(subjectId) => setForm({ ...form, subjectId })} />
+                </div>
+                <div>
+                  <label htmlFor="entry-notes" className="block text-sm font-medium">Notes <span className="font-normal text-muted">(optional)</span></label>
+                  <textarea id="entry-notes" rows={3} maxLength={2000} value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} placeholder="Add details to remember" className="mt-2 w-full resize-y rounded-xl border border-border bg-background px-4 py-3 text-base text-foreground outline-none placeholder:text-muted/70 focus:border-accent focus:ring-2 focus:ring-accent/20" />
+                </div>
+              </div>
+            )}
+            {wizardStep === 2 && (
+              <div>
+                <p className="text-sm text-muted">Check the date before saving.</p>
+                <dl className="mt-4 divide-y divide-border rounded-2xl border border-border bg-background px-4">
+                  <div className="py-3"><dt className="text-xs font-medium text-muted">Type and title</dt><dd className="mt-1 break-words text-sm font-semibold">{form.kind === "exam" ? "Exam" : "Event"} · {form.title.trim() || "Untitled"}</dd></div>
+                  <div className="py-3"><dt className="text-xs font-medium text-muted">When</dt><dd className="mt-1 text-sm">{form.date && form.time ? format(new Date(`${form.date}T${form.time}`), "EEEE, MMMM d 'at' h:mm a") : "Choose a date and time"}</dd></div>
+                  {(form.location.trim() || form.subjectId) && <div className="py-3"><dt className="text-xs font-medium text-muted">Details</dt><dd className="mt-1 break-words text-sm">{[form.location.trim(), subjects.find((subject) => subject.id === form.subjectId)?.name].filter(Boolean).join(" · ")}</dd></div>}
+                  {form.notes.trim() && <div className="py-3"><dt className="text-xs font-medium text-muted">Notes</dt><dd className="mt-1 whitespace-pre-wrap break-words text-sm">{form.notes.trim()}</dd></div>}
+                </dl>
+              </div>
+            )}
+          </EntryWizard>
         </form>
       )}
 

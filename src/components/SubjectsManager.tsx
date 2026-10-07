@@ -50,6 +50,10 @@ export default function SubjectsManager() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [color, setColor] = useState<string>(COLORS[0].value);
+  const [notes, setNotes] = useState("");
+  const [linksText, setLinksText] = useState("");
+  const [room, setRoom] = useState("");
+  const [teacher, setTeacher] = useState("");
   const [saving, setSaving] = useState(false);
   const [pageError, setPageError] = useState("");
   const [formError, setFormError] = useState("");
@@ -82,6 +86,10 @@ export default function SubjectsManager() {
     setEditingId(null);
     setName("");
     setColor(COLORS[0].value);
+    setNotes("");
+    setLinksText("");
+    setRoom("");
+    setTeacher("");
     setFormError("");
   }
 
@@ -89,6 +97,10 @@ export default function SubjectsManager() {
     setEditingId(null);
     setName("");
     setColor(COLORS[0].value);
+    setNotes("");
+    setLinksText("");
+    setRoom("");
+    setTeacher("");
     setFormError("");
     setNotice("");
     setFormOpen(true);
@@ -98,6 +110,10 @@ export default function SubjectsManager() {
     setEditingId(subject.id);
     setName(subject.name);
     setColor(subject.color);
+    setNotes(subject.notes ?? "");
+    setLinksText((subject.links ?? []).join("\n"));
+    setRoom(subject.room ?? "");
+    setTeacher(subject.teacher ?? "");
     setFormError("");
     setNotice("");
     setFormOpen(true);
@@ -114,14 +130,29 @@ export default function SubjectsManager() {
       setFormError("A subject with this name already exists.");
       return;
     }
+    const links = linksText.split(/\r?\n/).map((link) => link.trim()).filter(Boolean);
+    if (links.length > 15) {
+      setFormError("Add up to 15 links per subject.");
+      return;
+    }
+    for (const link of links) {
+      try {
+        const url = new URL(link);
+        if (url.protocol !== "http:" && url.protocol !== "https:") throw new Error();
+      } catch {
+        setFormError("Each link must be a complete http or https URL.");
+        return;
+      }
+    }
 
     setSaving(true);
     setFormError("");
+    const details = { name: cleanName, color, notes: notes.trim(), links, room: room.trim(), teacher: teacher.trim() };
     try {
       if (editingId) {
-        await updateRecord("subjects", editingId, { name: cleanName, color });
+        await updateRecord("subjects", editingId, details);
       } else {
-        await addRecord("subjects", { name: cleanName, color });
+        await addRecord("subjects", details);
       }
       resetForm();
       setNotice(editingId ? "Subject updated." : "Subject added.");
@@ -135,7 +166,7 @@ export default function SubjectsManager() {
 
   async function handleDelete(subject: SubjectRecord) {
     const accepted = window.confirm(
-      `Remove ${subject.name}? Linked classes, tasks, and exams or events will remain, but will no longer be linked to this subject.`,
+      `Remove ${subject.name}? Linked classes, tasks, exams/events, and focus logs will remain, but will no longer be linked to this subject.`,
     );
     if (!accepted) return;
 
@@ -144,7 +175,7 @@ export default function SubjectsManager() {
       const summary = await deleteSubject(subject.id);
       await refreshSubjects();
       if (summary) {
-        const unlinked = summary.classes + summary.tasks + summary.calendarEntries;
+        const unlinked = summary.classes + summary.tasks + summary.calendarEntries + summary.focusSessions;
         setNotice(unlinked > 0
           ? `${subject.name} removed. ${unlinked} linked ${unlinked === 1 ? "item was" : "items were"} kept and unlinked.`
           : `${subject.name} removed.`);
@@ -161,7 +192,7 @@ export default function SubjectsManager() {
         <div>
           <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Subjects</h1>
           <p className="mt-3 max-w-lg text-base leading-7 text-muted">
-            Give each subject a name and color. Classes, tasks, exams, and events can be connected to it.
+            Keep each subject’s room, teacher, notes, and useful links together. Classes, tasks, exams, and events can be connected to it.
           </p>
         </div>
         {!formOpen && (
@@ -215,6 +246,26 @@ export default function SubjectsManager() {
             </div>
           </fieldset>
 
+          <div className="mt-7 grid gap-4 sm:grid-cols-2">
+            <div>
+              <label htmlFor="subject-room" className="block text-sm font-medium">Room <span className="font-normal text-muted">(optional)</span></label>
+              <input id="subject-room" maxLength={120} value={room} onChange={(event) => setRoom(event.target.value)} placeholder="e.g. Science Lab 2" className="mt-2 min-h-12 w-full rounded-xl border border-border bg-background px-4 text-base text-foreground outline-none placeholder:text-muted/70 focus:border-accent focus:ring-2 focus:ring-accent/20" />
+            </div>
+            <div>
+              <label htmlFor="subject-teacher" className="block text-sm font-medium">Teacher <span className="font-normal text-muted">(optional)</span></label>
+              <input id="subject-teacher" maxLength={120} value={teacher} onChange={(event) => setTeacher(event.target.value)} placeholder="e.g. Ms. Santos" className="mt-2 min-h-12 w-full rounded-xl border border-border bg-background px-4 text-base text-foreground outline-none placeholder:text-muted/70 focus:border-accent focus:ring-2 focus:ring-accent/20" />
+            </div>
+          </div>
+          <div className="mt-4">
+            <label htmlFor="subject-notes" className="block text-sm font-medium">Notes <span className="font-normal text-muted">(optional)</span></label>
+            <textarea id="subject-notes" rows={3} maxLength={2000} value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Add reminders or details for this subject" className="mt-2 w-full resize-y rounded-xl border border-border bg-background px-4 py-3 text-base text-foreground outline-none placeholder:text-muted/70 focus:border-accent focus:ring-2 focus:ring-accent/20" />
+          </div>
+          <div className="mt-4">
+            <label htmlFor="subject-links" className="block text-sm font-medium">Useful links <span className="font-normal text-muted">(optional, one URL per line)</span></label>
+            <textarea id="subject-links" rows={3} maxLength={3000} value={linksText} onChange={(event) => setLinksText(event.target.value)} placeholder="https://classroom.example.com" className="mt-2 w-full resize-y rounded-xl border border-border bg-background px-4 py-3 text-base text-foreground outline-none placeholder:text-muted/70 focus:border-accent focus:ring-2 focus:ring-accent/20" />
+            <p className="mt-1 text-xs text-muted">Use complete http or https addresses, up to 15 links.</p>
+          </div>
+
           {formError && <p role="alert" className="mt-4 text-sm font-medium text-red-600 dark:text-red-400">{formError}</p>}
           <button
             type="submit"
@@ -250,11 +301,16 @@ export default function SubjectsManager() {
               ].filter(Boolean).join(" · ");
 
               return (
-                <li key={subject.id} className="flex flex-wrap items-center gap-3 rounded-2xl border border-border bg-surface p-4 sm:flex-nowrap sm:gap-4 sm:p-5">
+            <li key={subject.id} className="flex flex-wrap items-start gap-3 rounded-2xl border border-border bg-surface p-4 sm:gap-4 sm:p-5">
                   <span className="size-3.5 shrink-0 rounded-full" style={{ backgroundColor: subject.color }} aria-hidden="true" />
                   <div className="min-w-0 flex-1 basis-36">
                     <h2 className="break-words font-semibold">{subject.name}</h2>
                     <p className="mt-1 text-xs text-muted">{linkSummary || "No linked items yet"}</p>
+                    {(subject.room || subject.teacher) && <p className="mt-2 break-words text-sm text-muted">{[subject.room && `Room ${subject.room}`, subject.teacher && `Teacher ${subject.teacher}`].filter(Boolean).join(" · ")}</p>}
+                    {subject.notes && <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6">{subject.notes}</p>}
+                    {subject.links && subject.links.length > 0 && <ul className="mt-2 space-y-1" aria-label={`${subject.name} links`}>
+                      {subject.links.map((link) => <li key={link}><a href={link} target="_blank" rel="noopener noreferrer" className="break-all text-sm font-medium text-accent underline decoration-accent/40 underline-offset-2 hover:decoration-accent">{link}</a></li>)}
+                    </ul>}
                   </div>
                   <div className="flex basis-full items-center justify-end gap-1 sm:basis-auto sm:shrink-0">
                     <button type="button" onClick={() => startEdit(subject)} aria-label={`Edit ${subject.name}`} className="min-h-11 min-w-11 rounded-xl px-3 text-sm font-medium text-muted hover:bg-background hover:text-foreground focus-visible:outline-2 focus-visible:outline-accent">Edit</button>

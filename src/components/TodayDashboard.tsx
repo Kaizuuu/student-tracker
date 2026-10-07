@@ -2,9 +2,12 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { format, isSameDay, parseISO, startOfDay } from "date-fns";
+import { addDays, format, isSameDay, parseISO, startOfDay, startOfWeek } from "date-fns";
 import { getRecords, moveOverdueTaskToTomorrow, rescheduleAllOverdueTasksToTomorrow } from "@/lib/db";
+import { initializeUnmarkedExamReminders } from "@/lib/examReminders";
 import { dueDateTextClasses, getDueDateTone } from "@/lib/dueDateTone";
+import QuickCapture from "@/components/QuickCapture";
+import TodayRhythm from "@/components/TodayRhythm";
 import type { CalendarEntryRecord, ClassRecord, SubjectRecord, TaskRecord } from "@/types/records";
 
 type NextUpItem =
@@ -49,12 +52,13 @@ export default function TodayDashboard() {
 
   const refreshDashboard = useCallback(async () => {
     try {
-      const [nextClasses, nextTasks, nextEntries, nextSubjects] = await Promise.all([
+      const [nextClasses, nextEntries, nextSubjects] = await Promise.all([
         getRecords("classes"),
-        getRecords("tasks"),
         getRecords("calendarEntries"),
         getRecords("subjects"),
       ]);
+      await initializeUnmarkedExamReminders(nextEntries);
+      const nextTasks = await getRecords("tasks");
       setClasses(nextClasses);
       setTasks(nextTasks);
       setEntries(nextEntries);
@@ -158,6 +162,11 @@ export default function TodayDashboard() {
     };
   }, [classes, entries, subjectById, tasks, today]);
 
+  const weekDates = useMemo(
+    () => today ? Array.from({ length: 7 }, (_, index) => addDays(startOfWeek(today, { weekStartsOn: 1 }), index)) : [],
+    [today],
+  );
+
   function renderNextUpDetails(item: NextUpItem) {
     if (item.kind === "class") {
       const current = classTimeOn(today ?? new Date(), item.record.startTime) <= new Date();
@@ -192,8 +201,8 @@ export default function TodayDashboard() {
 
   if (!today) {
     return (
-      <section className="mx-auto w-full max-w-3xl" aria-busy="true">
-        <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-accent">Your day, at a glance</p>
+      <section className="today-page mx-auto w-full max-w-4xl" aria-busy="true">
+        <p className="section-eyebrow mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-accent">Your day, at a glance</p>
         <div className="h-9 w-48 animate-pulse rounded-lg bg-border" />
         <p className="mt-8 rounded-2xl border border-border bg-surface px-5 py-6 text-sm text-muted">Loading your day…</p>
       </section>
@@ -203,24 +212,39 @@ export default function TodayDashboard() {
   const nextUpDetails = nextUp ? renderNextUpDetails(nextUp) : null;
 
   return (
-    <section className="mx-auto w-full max-w-3xl">
-      <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-accent">Your day, at a glance</p>
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Today</h1>
-          <p className="mt-2 text-base text-muted">{format(today, "EEEE, MMMM d")}</p>
+    <section className="today-page mx-auto w-full max-w-4xl">
+      <section className="today-summary-card rounded-[2rem] border border-border bg-surface p-5 sm:p-7" aria-label="Today summary">
+        <p className="section-eyebrow mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-accent">Your day, at a glance</p>
+        <div className="today-heading flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">Today</h1>
+            <p className="mt-2 text-base font-medium text-muted sm:text-lg">{format(today, "EEEE, MMMM d")}</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Link href="/week" className="inline-flex min-h-11 items-center gap-2 rounded-full border border-border bg-surface px-4 text-sm font-semibold text-foreground shadow-sm transition-colors hover:border-accent/30 hover:bg-accent/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
+              <span aria-hidden="true" className="text-accent">▦</span>
+              Weekly calendar
+            </Link>
+            <Link href="/tasks" className="today-primary-action inline-flex min-h-11 items-center gap-2 rounded-full bg-accent px-5 text-sm font-semibold text-accent-foreground shadow-md shadow-accent/20 transition-all hover:-translate-y-0.5 hover:shadow-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"><span aria-hidden="true" className="text-lg leading-none">+</span>Add a task</Link>
+          </div>
         </div>
-        <Link href="/tasks" className="inline-flex min-h-11 items-center rounded-xl bg-accent px-4 text-sm font-semibold text-accent-foreground transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">Add a task</Link>
-      </div>
+        <ol aria-label="This week" className="today-date-strip mt-6 grid grid-cols-7 gap-2">
+          {weekDates.map((date) => {
+            const isToday = isSameDay(date, today);
+            return <li key={date.toISOString()} aria-label={format(date, "EEEE, MMMM d")} aria-current={isToday ? "date" : undefined} className={`today-date-chip flex min-h-[4.4rem] flex-col items-center justify-center gap-1 rounded-2xl border px-1 ${isToday ? "is-today border-accent bg-accent text-accent-foreground shadow-md shadow-accent/20" : "border-border bg-background text-foreground"}`}><span className={`text-[10px] font-semibold uppercase ${isToday ? "opacity-80" : "text-muted"}`}>{format(date, "EEEEE")}</span><span className="text-lg font-semibold leading-none">{format(date, "dd")}</span></li>;
+          })}
+        </ol>
+      </section>
 
       {pageError && <p role="alert" className="mt-6 rounded-xl border border-red-500/30 bg-red-500/5 px-4 py-3 text-sm text-red-700 dark:text-red-300">{pageError}</p>}
       {notice && <p role="status" className="mt-6 rounded-xl bg-accent/10 px-4 py-3 text-sm font-medium">{notice}</p>}
+      <QuickCapture onTaskAdded={() => void refreshDashboard()} />
 
       {loading ? (
         <p className="mt-8 rounded-2xl border border-border bg-surface px-5 py-6 text-sm text-muted">Loading your day…</p>
       ) : (
-        <div className="mt-8 space-y-5">
-          <section aria-labelledby="next-up-heading" className="rounded-3xl border border-accent/20 bg-accent/5 p-5 sm:p-7">
+        <div className="today-agenda-panel mt-7 space-y-5 rounded-[2rem] p-3 sm:mt-8 sm:space-y-6 sm:p-5">
+          <section aria-labelledby="next-up-heading" className="today-next-up rounded-3xl border border-accent/20 bg-accent/5 p-5 sm:p-7">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-accent">Next up</p>
             {nextUpDetails ? (
               <Link href={nextUpDetails.href} className="mt-4 block rounded-2xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent">
@@ -318,6 +342,10 @@ export default function TodayDashboard() {
                 <p className="mt-4 text-sm leading-6 text-muted">Nothing due today. You can add a task whenever you need.</p>
               )}
             </section>
+
+            <div className="sm:col-span-2">
+              <TodayRhythm />
+            </div>
 
             <section aria-labelledby="dates-heading" className="rounded-2xl border border-border bg-surface p-5 sm:col-span-2">
               <div className="flex items-center justify-between gap-3">

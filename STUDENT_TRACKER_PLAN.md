@@ -29,7 +29,7 @@ A free, mobile-first PWA that works like a real tracker. It reminds the user of 
 ---
 
 ## Next up
-**P1-15: Deploy to Vercel and test install on iPhone via Add to Home Screen**
+**P3-01: Supabase project setup and optional sync across devices**
 
 ---
 
@@ -48,6 +48,20 @@ A free, mobile-first PWA that works like a real tracker. It reminds the user of 
 - [x] P1-12: Add to Calendar export. 2026-10-07. Added per-task and per-exam/event `.ics` downloads with UTC event times, escaped/folded text, and default 1-day and 1-hour display alarms in `src/lib/ics.ts`, `src/components/TasksManager.tsx`, and `src/components/CalendarEntriesManager.tsx`; production build and phone-width pages verified.
 - [x] P1-13: Backup and restore. 2026-10-07. Added consistent JSON export for subjects, classes, tasks, subtasks, and exams/events plus validated atomic merge or confirmed replace import in `src/lib/backup.ts`, `src/lib/db.ts`, and `src/components/BackupManager.tsx`, linked from More; production build and phone-width UI verified.
 - [x] P1-14: PWA setup. 2026-10-07. Added the App Router manifest, branded 192/512 and maskable/iOS icons, production-only service worker registration, offline fallback and conservative app-shell/static caching, plus iOS standalone and safe-area metadata in `src/app/manifest.ts`, `public/sw.js`, `public/offline.html`, and `src/components/ServiceWorkerRegistration.tsx`; production build and manifest, icon, worker, and metadata endpoints verified.
+- [x] P1-16: Weekly Calendar. 2026-10-07. Reworked the calendar into Daily, swipeable Weekly, and compact Monthly views with activity-type filters, Low/Mid/High task-priority filters, responsive day cards capped at three previews with a “View all” action, and category dots in `src/components/WeeklyCalendar.tsx`; production build and local `/week` route verified.
+- [x] P1-17: Guided entry wizard. 2026-10-07. Replaced the long task, class, and exam/event forms with shared essentials, optional-details, and review steps, including progress, back/next navigation, validation, and save actions in `src/components/EntryWizard.tsx`, `src/components/TasksManager.tsx`, `src/components/ClassesManager.tsx`, and `src/components/CalendarEntriesManager.tsx`; production build and TypeScript validation passed.
+- [x] P2-01: Habits with forgiving streaks. 2026-10-07. Added local daily habit creation/check-off and one-missed-day streaks, with history stored in IndexedDB v2 and included in backup/restore in `src/components/HabitsManager.tsx`, `src/lib/habits.ts`, `src/lib/db.ts`, and `src/lib/backup.ts`; production build and local `/habits` route verified.
+- [x] P2-02: Small-version habits. 2026-10-07. Added optional small-version text when creating and editing habits, separate Full and small check-in actions, and records which version was completed while preserving P2-01 history/backup compatibility in `src/components/HabitsManager.tsx`, `src/lib/db.ts`, `src/lib/backup.ts`, and `src/types/records.ts`; production build and local `/habits` route verified.
+- [x] P2-03: Morning and night routines. 2026-10-07. Added ordered daily checklists with create, edit, reorder, check-off, and delete actions in `src/components/RoutinesManager.tsx`, with IndexedDB v3 schema and backup/restore support in `src/lib/db.ts`, `src/lib/backup.ts`, and `src/types/records.ts`; linked from More and verified build and local `/routines` route.
+- [x] P2-04: Streak calendar. 2026-10-07. Added a month heat map showing daily habit check-ins, month navigation, completion intensity, and a selected-day completion summary in `src/components/HabitStreakCalendar.tsx`, included on the habits page; production build and local `/habits` route verified.
+- [x] P2-05: Quick capture parser. 2026-10-07. Added a Today capture flow that parses relative/named/numeric dates, 12/24-hour times, and priority phrases into an editable task preview before saving in `src/lib/quickCapture.ts` and `src/components/QuickCapture.tsx`; wired it to refresh Today in `src/components/TodayDashboard.tsx`; production build and local Today route verified.
+- [x] P2-06: Weekly review screen. 2026-10-07. Added a More-linked weekly summary of completed tasks and habit/routine check-ins, overdue tasks, and next week’s classes/tasks/exams/events grouped by day in `src/components/WeeklyReview.tsx` and `src/app/review/page.tsx`; production build and local `/review` route verified.
+- [x] P2-07: Exam study reminders. 2026-10-07. Exams now create linked prep tasks 7, 3, and 1 local calendar days before; existing exams are backfilled once, future reminders follow edited exam dates, and generated tasks are marked in `src/lib/examReminders.ts`, `src/components/CalendarEntriesManager.tsx`, `src/components/TodayDashboard.tsx`, `src/components/TasksManager.tsx`, `src/types/records.ts`, and `src/lib/backup.ts`; production build passed.
+- [x] P2-08: Notes per subject. 2026-10-07. Subjects now store and display room, teacher, notes, and up to 15 validated web links; older records remain compatible and backup import/export preserves the fields in `src/components/SubjectsManager.tsx`, `src/types/records.ts`, and `src/lib/backup.ts`; production build passed.
+- [x] P2-09: Focus timer. 2026-10-07. Added persistent 25/5 and 50/10 Pomodoro timers linked to tasks, focus-session logging and today/all-time totals by subject, plus IndexedDB v4 and backward-compatible backup v4 support in `src/components/FocusTimer.tsx`, `src/app/focus/page.tsx`, `src/app/more/page.tsx`, `src/lib/db.ts`, `src/lib/backup.ts`, and `src/types/records.ts`; production build passed.
+- [x] P2-10: Habits and routines on Today. 2026-10-08. Added a compact Today rhythm card with daily habit check-ins, forgiving streaks, full/small versions, morning/night routine switching, progress, and direct IndexedDB completion updates in `src/components/TodayRhythm.tsx` and `src/components/TodayDashboard.tsx`; production build passed.
+- [x] P3-07: Import classes from a schedule screenshot. 2026-10-08. Added in-browser OCR, editable day/time/subject suggestions, existing-subject matching, new-subject creation, duplicate warnings, and a confirm-before-save flow in `src/components/ScheduleImageImport.tsx` and `src/components/ClassesManager.tsx`; production build passed.
+- [x] P3-08: Premium subject, option, date, time, and text-entry controls. 2026-10-08. Replaced native dropdowns and date fields with shared themed pickers across classes, tasks, calendar entries, focus setup, backup import, and quick capture; unified input/textarea surfaces, placeholder contrast, and focus styling in `src/components/ChoicePicker.tsx`, `src/components/DatePicker.tsx`, `src/components/DateTimePicker.tsx`, `src/components/TimePicker.tsx`, and `src/app/globals.css`; production build passed.
 
 ---
 
@@ -57,21 +71,12 @@ A free, mobile-first PWA that works like a real tracker. It reminds the user of 
 - [x] P1-13: Backup (export all data to JSON, import it back)
 - [x] P1-14: PWA setup (manifest, icons, service worker, offline, iOS meta tags)
 - [ ] P1-15: Deploy to Vercel and test install on iPhone via Add to Home Screen
-  - Preflight build passes. Deployment still needs a Vercel CLI sign-in and project link; the iPhone install check needs Safari on a physical iPhone.
-- [ ] P1-16: Weekly Calendar — one week-at-a-glance page showing classes, tasks, exams, and events together.
-- [ ] P1-17: Guided entry wizard — replace long, scroll-heavy forms with short steps, progress, back navigation, optional details, and a review before saving.
+  - Deployment and PWA endpoints are verified at `https://student-tracker-git-main-rence6.vercel.app/`. Defer the physical iPhone install check until the user returns to it.
 
 ### Phase 2: Habits and smart features
-- [ ] P2-01: Habits (daily check-off) with forgiving streaks (one missed day does not reset)
-- [ ] P2-02: Small-version habits (e.g. "read 1 page" still counts)
-- [ ] P2-03: Morning and night routines (ordered checklists)
-- [ ] P2-04: Streak calendar (monthly heat map of habit completion)
-- [ ] P2-05: Quick capture parser (type "Math quiz Friday 9am" -> creates the item)
-- [ ] P2-06: Weekly review screen (done, overdue, next week's load)
-- [ ] P2-07: Exam study reminders (auto-add prep items 7, 3, and 1 days before)
-- [ ] P2-08: Notes per subject (links, room numbers, teacher info)
-- [ ] P2-09: Focus timer (Pomodoro) linked to a task, with study time logged per subject
-- [ ] P2-10: Habits and routines added to the Today screen
+- [x] P2-07: Exam study reminders (auto-add prep items 7, 3, and 1 days before)
+- [x] P2-08: Notes per subject (links, room numbers, teacher info)
+- [x] P2-09: Focus timer (Pomodoro) linked to a task, with study time logged per subject
 
 ### Phase 3: Extras
 - [ ] P3-01: Supabase project setup (free tier) and optional sync across devices
@@ -80,11 +85,19 @@ A free, mobile-first PWA that works like a real tracker. It reminds the user of 
 - [ ] P3-04: Themes and light/dark customization
 - [ ] P3-05: Mood/energy check-in (one tap per day) with weekly chart
 - [ ] P3-06: Home screen widget workaround via the Scriptable app (needs synced data)
+- [x] P3-07: Import class schedules from screenshots. Completed 2026-10-08; OCR runs in the browser and suggestions are reviewed before saving.
+- [x] P3-08: Replace generic choice, date, and time controls with branded pickers and unify text-entry fields. Completed 2026-10-08.
 
 ---
 
 ## Notes and decisions
-- P1-15 is pending: this workspace has no Vercel CLI authentication or linked project, and the iPhone install check must be completed on a physical iPhone in Safari.
+- P1-15 is partly complete and deferred at the user's request: the deployed app and PWA endpoints load, but standalone installation still needs verification in Safari on a physical iPhone. The user asked to finish Phase 2 before downloading/installing, so no download or release step is being done yet.
+- P2-01 forgiving streaks count completed check-in days and allow a gap of one local calendar day between check-ins; two missed days break the current streak.
+- Today previews up to three habits and four routine steps at a time, with links to the full habit and routine screens, so large lists do not overwhelm the dashboard.
+- P1-16 calendar layout follows the user's reference: keep the existing theme, use a horizontal day carousel for Weekly, a focused agenda for Daily, and a denser month grid for Monthly. Keep type and task-priority filters available.
+- 2026-10-08 visual refresh: applied a unified, iOS-inspired premium visual system across the app with system typography, refined light/dark surfaces, softer card depth, accessible motion/focus states, floating glass navigation, and a Today layout with a date strip and pastel-blue agenda panel inspired by the user's reference. The app theme is now pastel blue and white, including PWA metadata and icons. Explicit light/dark utilities follow the selected app theme, and light-mode muted text uses darker blue-gray for legibility.
+- P3-07 was added and completed ahead of P3-01 at the user's request. Screenshot OCR is performed in the browser; the first use downloads Tesseract OCR assets, the image itself is not uploaded, and the user reviews all proposed classes before they are saved locally.
+- P3-08 was added and completed ahead of P3-01 at the user's request; P3-01 remains next.
 - Small-screen layouts reflow with the device width; long labels wrap at word boundaries, and compact controls avoid cutting words off on phone screens.
 - Native iOS app was ruled out: it needs the $99/year Apple Developer account, or weekly re-signing for free sideloading.
 - iOS PWAs cannot make true home screen widgets. Calendar export puts events in the built-in iOS Calendar widget.

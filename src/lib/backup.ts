@@ -1,6 +1,6 @@
 import { getBackupRecords } from "@/lib/db";
 import type { StudentTrackerBackup, StudentTrackerBackupRecords } from "@/types/backup";
-import type { CalendarEntryKind, TaskPriority } from "@/types/records";
+import type { CalendarEntryKind, RoutinePeriod, TaskPriority } from "@/types/records";
 
 export const MAX_BACKUP_FILE_BYTES = 10 * 1024 * 1024;
 const MAX_RECORDS_PER_STORE = 50_000;
@@ -45,6 +45,21 @@ function recordArray(value: unknown, label: string): unknown[] {
   return value;
 }
 
+function subjectLinks(value: unknown, label: string): string[] {
+  if (value === undefined) return [];
+  if (!Array.isArray(value) || value.length > 15) throw new Error(`${label} must contain at most 15 links.`);
+  return value.map((item, index) => {
+    const link = requiredString(item, `${label}[${index}]`);
+    try {
+      const url = new URL(link);
+      if (url.protocol !== "https:" && url.protocol !== "http:") throw new Error();
+    } catch {
+      throw new Error(`${label}[${index}] must be an http or https URL.`);
+    }
+    return link;
+  });
+}
+
 function uniqueIds<T extends { id: string }>(records: T[], label: string) {
   const ids = new Set<string>();
   for (const record of records) {
@@ -56,10 +71,19 @@ function uniqueIds<T extends { id: string }>(records: T[], label: string) {
 export async function createBackup(): Promise<StudentTrackerBackup> {
   return {
     app: "student-tracker",
-    formatVersion: 1,
+    formatVersion: 4,
     exportedAt: new Date().toISOString(),
     records: await getBackupRecords(),
   };
+}
+
+function habitDayString(value: unknown, label: string): string {
+  const day = requiredString(value, label);
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(day);
+  if (!match) throw new Error(`${label} must use YYYY-MM-DD format.`);
+  const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
+  if (date.toISOString().slice(0, 10) !== day) throw new Error(`${label} is not a valid calendar date.`);
+  return day;
 }
 
 export function parseBackup(text: string): StudentTrackerBackup {
@@ -71,7 +95,7 @@ export function parseBackup(text: string): StudentTrackerBackup {
   } catch {
     throw new Error("This file is not valid JSON.");
   }
-  if (!isObject(value) || value.app !== "student-tracker" || value.formatVersion !== 1 || !isObject(value.records)) {
+  if (!isObject(value) || value.app !== "student-tracker" || (value.formatVersion !== 1 && value.formatVersion !== 2 && value.formatVersion !== 3 && value.formatVersion !== 4) || !isObject(value.records)) {
     throw new Error("This is not a supported Student Tracker backup.");
   }
   const exportedAt = validDateString(value.exportedAt, "Backup exportedAt");
@@ -82,7 +106,15 @@ export function parseBackup(text: string): StudentTrackerBackup {
       const label = `subjects[${index}]`;
       const base = parseBase(item, label);
       if (!isObject(item)) throw new Error(`${label} must be an object.`);
-      return { ...base, name: requiredString(item.name, `${label}.name`), color: requiredString(item.color, `${label}.color`) };
+      return {
+        ...base,
+        name: requiredString(item.name, `${label}.name`),
+        color: requiredString(item.color, `${label}.color`),
+        notes: item.notes === undefined ? "" : requiredString(item.notes, `${label}.notes`, true),
+        links: subjectLinks(item.links, `${label}.links`),
+        room: item.room === undefined ? "" : requiredString(item.room, `${label}.room`, true),
+        teacher: item.teacher === undefined ? "" : requiredString(item.teacher, `${label}.teacher`, true),
+      };
     }),
     classes: recordArray(raw.classes, "classes").map((item, index) => {
       const label = `classes[${index}]`;
@@ -109,6 +141,8 @@ export function parseBackup(text: string): StudentTrackerBackup {
       if (!isObject(item)) throw new Error(`${label} must be an object.`);
       const priority = item.priority;
       if (priority !== "low" && priority !== "medium" && priority !== "high") throw new Error(`${label}.priority is invalid.`);
+      const reminderOffset = item.examReminderOffsetDays;
+      if (reminderOffset !== undefined && reminderOffset !== 1 && reminderOffset !== 3 && reminderOffset !== 7) throw new Error(`${label}.examReminderOffsetDays is invalid.`);
       return {
         ...base,
         title: requiredString(item.title, `${label}.title`),
@@ -117,6 +151,8 @@ export function parseBackup(text: string): StudentTrackerBackup {
         priority: priority as TaskPriority,
         notes: requiredString(item.notes, `${label}.notes`, true),
         completedAt: nullableDateString(item.completedAt, `${label}.completedAt`),
+        ...(item.examReminderForId === undefined ? {} : { examReminderForId: requiredString(item.examReminderForId, `${label}.examReminderForId`) }),
+        ...(reminderOffset === undefined ? {} : { examReminderOffsetDays: reminderOffset as 1 | 3 | 7 }),
       };
     }),
     subtasks: recordArray(raw.subtasks, "subtasks").map((item, index) => {
@@ -138,6 +174,7 @@ export function parseBackup(text: string): StudentTrackerBackup {
       if (!isObject(item)) throw new Error(`${label} must be an object.`);
       const kind = item.kind;
       if (kind !== "exam" && kind !== "event") throw new Error(`${label}.kind is invalid.`);
+      if (item.studyRemindersInitialized !== undefined && typeof item.studyRemindersInitialized !== "boolean") throw new Error(`${label}.studyRemindersInitialized must be true or false.`);
       return {
         ...base,
         kind: kind as CalendarEntryKind,
@@ -147,6 +184,68 @@ export function parseBackup(text: string): StudentTrackerBackup {
         subjectId: nullableString(item.subjectId, `${label}.subjectId`),
         location: requiredString(item.location, `${label}.location`, true),
         notes: requiredString(item.notes, `${label}.notes`, true),
+        ...(item.studyRemindersInitialized === undefined ? {} : { studyRemindersInitialized: item.studyRemindersInitialized }),
+      };
+    }),
+    habits: (raw.habits === undefined ? [] : recordArray(raw.habits, "habits")).map((item, index) => {
+      const label = `habits[${index}]`;
+      const base = parseBase(item, label);
+      if (!isObject(item)) throw new Error(`${label} must be an object.`);
+      return {
+        ...base,
+        title: requiredString(item.title, `${label}.title`),
+        smallVersion: item.smallVersion === undefined ? null : nullableString(item.smallVersion, `${label}.smallVersion`),
+      };
+    }),
+    habitCompletions: (raw.habitCompletions === undefined ? [] : recordArray(raw.habitCompletions, "habitCompletions")).map((item, index) => {
+      const label = `habitCompletions[${index}]`;
+      const base = parseBase(item, label);
+      if (!isObject(item)) throw new Error(`${label} must be an object.`);
+      const version = item.version ?? "full";
+      if (version !== "full" && version !== "small") throw new Error(`${label}.version is invalid.`);
+      return {
+        ...base,
+        habitId: requiredString(item.habitId, `${label}.habitId`),
+        date: habitDayString(item.date, `${label}.date`),
+        version,
+      };
+    }),
+    routineItems: (raw.routineItems === undefined ? [] : recordArray(raw.routineItems, "routineItems")).map((item, index) => {
+      const label = `routineItems[${index}]`;
+      const base = parseBase(item, label);
+      if (!isObject(item)) throw new Error(`${label} must be an object.`);
+      const period = item.period;
+      if (period !== "morning" && period !== "night") throw new Error(`${label}.period is invalid.`);
+      if (!Number.isInteger(item.position) || Number(item.position) < 0) throw new Error(`${label}.position must be a non-negative integer.`);
+      return {
+        ...base,
+        period: period as RoutinePeriod,
+        title: requiredString(item.title, `${label}.title`),
+        position: Number(item.position),
+      };
+    }),
+    routineCompletions: (raw.routineCompletions === undefined ? [] : recordArray(raw.routineCompletions, "routineCompletions")).map((item, index) => {
+      const label = `routineCompletions[${index}]`;
+      const base = parseBase(item, label);
+      if (!isObject(item)) throw new Error(`${label} must be an object.`);
+      return {
+        ...base,
+        itemId: requiredString(item.itemId, `${label}.itemId`),
+        date: habitDayString(item.date, `${label}.date`),
+      };
+    }),
+    focusSessions: (raw.focusSessions === undefined ? [] : recordArray(raw.focusSessions, "focusSessions")).map((item, index) => {
+      const label = `focusSessions[${index}]`;
+      const base = parseBase(item, label);
+      if (!isObject(item)) throw new Error(`${label} must be an object.`);
+      if (!Number.isInteger(item.durationSeconds) || Number(item.durationSeconds) < 1 || Number(item.durationSeconds) > 86_400) throw new Error(`${label}.durationSeconds must be from 1 to 86400.`);
+      return {
+        ...base,
+        taskId: nullableString(item.taskId, `${label}.taskId`),
+        subjectId: nullableString(item.subjectId, `${label}.subjectId`),
+        startedAt: validDateString(item.startedAt, `${label}.startedAt`),
+        endedAt: validDateString(item.endedAt, `${label}.endedAt`),
+        durationSeconds: Number(item.durationSeconds),
       };
     }),
   };
@@ -156,20 +255,36 @@ export function parseBackup(text: string): StudentTrackerBackup {
   uniqueIds(records.tasks, "tasks");
   uniqueIds(records.subtasks, "subtasks");
   uniqueIds(records.calendarEntries, "calendarEntries");
+  uniqueIds(records.habits, "habits");
+  uniqueIds(records.habitCompletions, "habitCompletions");
+  uniqueIds(records.routineItems, "routineItems");
+  uniqueIds(records.routineCompletions, "routineCompletions");
+  uniqueIds(records.focusSessions, "focusSessions");
 
   const subjectIds = new Set(records.subjects.map((record) => record.id));
   const taskIds = new Set(records.tasks.map((record) => record.id));
+  const habitIds = new Set(records.habits.map((record) => record.id));
+  const routineItemIds = new Set(records.routineItems.map((record) => record.id));
   const invalidSubjectLinks = [
     ...records.classes.map((record) => record.subjectId),
     ...records.tasks.map((record) => record.subjectId),
     ...records.calendarEntries.map((record) => record.subjectId),
+    ...records.focusSessions.map((record) => record.subjectId),
   ].some((subjectId) => subjectId !== null && !subjectIds.has(subjectId));
   if (invalidSubjectLinks) throw new Error("Backup items refer to a subject that is not included in the file.");
   if (records.subtasks.some((subtask) => !taskIds.has(subtask.taskId))) throw new Error("Backup subtasks refer to a task that is not included in the file.");
+  if (records.tasks.some((task) => Boolean(task.examReminderForId) !== Boolean(task.examReminderOffsetDays))) throw new Error("Backup study reminder links are incomplete.");
+  if (records.focusSessions.some((session) => session.taskId !== null && !taskIds.has(session.taskId))) throw new Error("Backup focus sessions refer to a task that is not included in the file.");
+  if (records.habitCompletions.some((completion) => !habitIds.has(completion.habitId))) throw new Error("Backup habit completions refer to a habit that is not included in the file.");
+  if (records.routineCompletions.some((completion) => !routineItemIds.has(completion.itemId))) throw new Error("Backup routine check-ins refer to a routine item that is not included in the file.");
+  for (const period of ["morning", "night"] as const) {
+    const positions = records.routineItems.filter((item) => item.period === period).map((item) => item.position);
+    if (new Set(positions).size !== positions.length) throw new Error(`Backup ${period} routine contains duplicate item positions.`);
+  }
 
   return {
     app: "student-tracker",
-    formatVersion: 1,
+    formatVersion: value.formatVersion,
     exportedAt,
     records,
   };
