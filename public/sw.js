@@ -1,5 +1,5 @@
 const CACHE_PREFIX = "student-tracker-";
-const CACHE_NAME = `${CACHE_PREFIX}v3`;
+const CACHE_NAME = `${CACHE_PREFIX}v4`;
 const PRECACHE_URLS = [
   "/",
   "/offline.html",
@@ -51,6 +51,8 @@ self.addEventListener("push", (event) => {
       icon: "/icon-192.png",
       badge: "/icon-192.png",
       tag: typeof payload.tag === "string" ? payload.tag : "student-tracker-reminder",
+      requireInteraction: true,
+      vibrate: [180, 100, 180],
       data: { url: target },
     }),
   );

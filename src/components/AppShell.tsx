@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import ThemeToggle from "@/components/ThemeToggle";
 import QuickAdd from "@/components/QuickAdd";
+import PwaInstallProvider from "@/components/PwaInstallProvider";
 
 const tabs = [
   { href: "/", label: "Today", icon: "today" },
@@ -58,6 +59,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
   };
 
   return (
+    <PwaInstallProvider>
     <div className="flex min-h-dvh flex-col">
       <header className="sticky top-0 z-20 border-b border-border/70 bg-background/75 backdrop-blur-2xl supports-[backdrop-filter]:bg-background/60">
         <div className="mx-auto flex h-[4.25rem] w-full max-w-5xl items-center justify-between px-5 sm:px-8">
@@ -81,5 +83,6 @@ export default function AppShell({ children }: { children: ReactNode }) {
         </div>
       </nav>
     </div>
+    </PwaInstallProvider>
   );
 }
