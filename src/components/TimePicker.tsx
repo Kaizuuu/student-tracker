@@ -62,7 +62,7 @@ export default function TimePicker({ id, value, onChange, disabled = false }: Ti
     setOpen(false);
   }
 
-  return <div ref={rootRef} className="relative mt-2">
+  return <div ref={rootRef} className="relative mt-2 min-w-0 w-full max-w-full">
     <button ref={triggerRef} id={id} type="button" disabled={disabled} aria-haspopup="dialog" aria-expanded={open} onClick={openPicker} className={`group flex min-h-12 w-full items-center gap-3 rounded-2xl border bg-surface px-3.5 text-left shadow-[0_2px_8px_rgb(34_78_108_/_4%)] outline-none transition-[border-color,box-shadow,background-color] hover:border-accent/40 hover:bg-background/60 focus-visible:border-accent focus-visible:ring-4 focus-visible:ring-accent/10 disabled:cursor-not-allowed disabled:opacity-60 ${open ? "border-accent/50 ring-4 ring-accent/10" : "border-border"}`}>
       <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-accent/10 text-accent" aria-hidden="true"><svg className="size-4" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="7" stroke="currentColor" strokeWidth="1.6"/><path d="M10 5.8V10l2.8 1.8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg></span>
       <span className="min-w-0 flex-1"><span className="block text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">Selected time</span><span className="mt-0.5 block font-semibold tabular-nums text-foreground">{formatDisplay(value)}</span></span>

@@ -266,7 +266,7 @@ export default function ClassesManager() {
       {importOpen && !formOpen && <ScheduleImageImport subjects={subjects} existingClasses={classes} onClose={() => setImportOpen(false)} onSave={handleImportSave} />}
 
       {formOpen && (
-        <form onSubmit={handleWizardSubmit} className="mt-8 rounded-3xl border border-border bg-surface p-5 sm:p-8">
+        <form onSubmit={handleWizardSubmit} className="mt-8 min-w-0 w-full max-w-full rounded-3xl border border-border bg-surface p-5 sm:p-8">
           <EntryWizard
             title={editingId ? "Edit class" : "Add a weekly class"}
             step={wizardStep}
@@ -278,7 +278,7 @@ export default function ClassesManager() {
             onCancel={closeForm}
           >
             {wizardStep === 0 && (
-              <div className="grid gap-5">
+              <div className="grid min-w-0 gap-5">
                 <div>
                   <label htmlFor="class-subject" className="block text-sm font-medium">Subject</label>
                   <ChoicePicker id="class-subject" value={form.subjectId} placeholder="Choose a subject" options={subjects.map((subject) => ({ value: subject.id, label: subject.name, description: [subject.room, subject.teacher].filter(Boolean).join(" · "), color: subject.color }))} onChange={(subjectId) => setForm({ ...form, subjectId })} />
@@ -301,7 +301,7 @@ export default function ClassesManager() {
               </div>
             )}
             {wizardStep === 1 && (
-              <div className="grid gap-5">
+              <div className="grid min-w-0 gap-5">
                 <div>
                   <label htmlFor="class-room" className="block text-sm font-medium">Room <span className="font-normal text-muted">(optional)</span></label>
                   <input id="class-room" maxLength={60} value={form.room} onChange={(event) => setForm({ ...form, room: event.target.value })} placeholder="e.g. Science 204" className="mt-2 min-h-12 w-full rounded-xl border border-border bg-background px-4 text-base text-foreground outline-none placeholder:text-muted/70 focus:border-accent focus:ring-2 focus:ring-accent/20" />
@@ -318,7 +318,7 @@ export default function ClassesManager() {
                 <dl className="mt-4 divide-y divide-border rounded-2xl border border-border bg-background px-4">
                   <div className="py-3"><dt className="text-xs font-medium text-muted">Subject</dt><dd className="mt-1 truncate text-sm font-semibold">{subjects.find((subject) => subject.id === form.subjectId)?.name ?? "No subject"}</dd></div>
                   <div className="py-3"><dt className="text-xs font-medium text-muted">Repeats</dt><dd className="mt-1 text-sm">{WEEKDAYS.find((day) => day.value === form.dayOfWeek)?.label ?? "Monday"}, {formatTime(form.startTime)}–{formatTime(form.endTime)}</dd></div>
-                  <div className="py-3"><dt className="text-xs font-medium text-muted">Reminder</dt><dd className="mt-1 text-sm">{form.reminderMinutesBefore === null ? "Off" : form.reminderMinutesBefore === 1440 ? "1 day before each class only" : `1 day and ${form.reminderMinutesBefore === 60 ? "1 hour" : `${form.reminderMinutesBefore} minutes`} before each class`}</dd></div>
+                  <div className="py-3"><dt className="text-xs font-medium text-muted">Reminder</dt><dd className="mt-1 text-sm">{form.reminderMinutesBefore === null ? "Off" : `1 day and ${form.reminderMinutesBefore === 1440 ? "10 minutes" : form.reminderMinutesBefore === 60 ? "1 hour" : `${form.reminderMinutesBefore} minutes`} before each class`}</dd></div>
                   {(form.room.trim() || form.teacher.trim()) && <div className="py-3"><dt className="text-xs font-medium text-muted">More details</dt><dd className="mt-1 truncate text-sm">{[form.room.trim(), form.teacher.trim()].filter(Boolean).join(" · ")}</dd></div>}
                 </dl>
               </div>

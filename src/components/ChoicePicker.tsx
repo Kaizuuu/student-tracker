@@ -60,7 +60,7 @@ export default function ChoicePicker({ id, value, options, onChange, placeholder
   }
 
   return (
-    <div ref={rootRef} className="relative mt-2">
+    <div ref={rootRef} className="relative mt-2 min-w-0 w-full max-w-full">
       <button
         ref={triggerRef}
         id={id}

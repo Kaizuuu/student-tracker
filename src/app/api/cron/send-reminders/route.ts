@@ -76,7 +76,8 @@ function reminderOffset(value: number | null | undefined) {
 function reminderOffsets(value: number | null | undefined) {
   const offset = reminderOffset(value);
   if (offset === null) return [];
-  return offset === 1440 ? [1440] : [1440, offset];
+  // 1440 is retained for old backups, but the one-day reminder is now automatic.
+  return offset === 1440 ? [1440, DEFAULT_REMINDER_MINUTES] : [1440, offset];
 }
 
 function reminderWindowIsOpen(startsAt: Date, offset: number | null, now: Date) {

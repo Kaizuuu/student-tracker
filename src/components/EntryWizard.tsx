@@ -28,7 +28,7 @@ export default function EntryWizard({
   const currentStep = STEP_LABELS[step] ?? STEP_LABELS[0];
 
   return (
-    <div>
+    <div className="min-w-0 w-full max-w-full">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold">{title}</h2>
@@ -43,7 +43,7 @@ export default function EntryWizard({
         ))}
       </div>
 
-      <div className="mt-6 min-h-44">{children}</div>
+      <div className="mt-6 min-h-44 min-w-0">{children}</div>
       {error && <p role="alert" className="mt-4 text-sm font-medium text-red-600 dark:text-red-400">{error}</p>}
 
       <div className="mt-7 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-5">

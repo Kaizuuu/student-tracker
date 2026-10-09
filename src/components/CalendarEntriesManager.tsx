@@ -278,7 +278,7 @@ export default function CalendarEntriesManager() {
       {notice && <p role="status" className="mt-6 rounded-xl bg-accent/10 px-4 py-3 text-sm font-medium">{notice}</p>}
 
       {formOpen && (
-        <form onSubmit={handleWizardSubmit} className="mt-8 rounded-3xl border border-border bg-surface p-5 sm:p-8">
+        <form onSubmit={handleWizardSubmit} className="mt-8 min-w-0 w-full max-w-full rounded-3xl border border-border bg-surface p-5 sm:p-8">
           <EntryWizard
             title={editingId ? `Edit ${form.kind}` : `Add an ${form.kind === "exam" ? "exam" : "event"}`}
             step={wizardStep}
@@ -290,7 +290,7 @@ export default function CalendarEntriesManager() {
             onCancel={closeForm}
           >
             {wizardStep === 0 && (
-              <div className="grid gap-5">
+              <div className="grid min-w-0 gap-5">
                 <div>
                   <label htmlFor="entry-kind" className="block text-sm font-medium">What are you adding?</label>
                   <ChoicePicker id="entry-kind" value={form.kind} options={[{ value: "exam", label: "Exam", marker: "E", color: "#DB6B70", description: "Test, quiz, or assessment" }, { value: "event", label: "Event", marker: "✦", color: "#347FAE", description: "A date to remember" }]} onChange={(kind) => setForm({ ...form, kind: kind as CalendarEntryKind })} />
@@ -313,7 +313,7 @@ export default function CalendarEntriesManager() {
               </div>
             )}
             {wizardStep === 1 && (
-              <div className="grid gap-5">
+              <div className="grid min-w-0 gap-5">
                 <div>
                   <label htmlFor="entry-location" className="block text-sm font-medium">Location <span className="font-normal text-muted">(optional)</span></label>
                   <input id="entry-location" maxLength={120} value={form.location} onChange={(event) => setForm({ ...form, location: event.target.value })} placeholder="Room or address" className="mt-2 min-h-12 w-full rounded-xl border border-border bg-background px-4 text-base text-foreground outline-none placeholder:text-muted/70 focus:border-accent focus:ring-2 focus:ring-accent/20" />
@@ -334,7 +334,7 @@ export default function CalendarEntriesManager() {
                 <dl className="mt-4 divide-y divide-border rounded-2xl border border-border bg-background px-4">
                   <div className="py-3"><dt className="text-xs font-medium text-muted">Type and title</dt><dd className="mt-1 break-words text-sm font-semibold">{form.kind === "exam" ? "Exam" : "Event"} · {form.title.trim() || "Untitled"}</dd></div>
                   <div className="py-3"><dt className="text-xs font-medium text-muted">When</dt><dd className="mt-1 text-sm">{form.date && form.time ? format(new Date(`${form.date}T${form.time}`), "EEEE, MMMM d 'at' h:mm a") : "Choose a date and time"}</dd></div>
-                  <div className="py-3"><dt className="text-xs font-medium text-muted">Reminder</dt><dd className="mt-1 text-sm">{form.reminderMinutesBefore === null ? "Off" : form.reminderMinutesBefore === 1440 ? "1 day before only" : `1 day and ${form.reminderMinutesBefore === 60 ? "1 hour" : `${form.reminderMinutesBefore} minutes`} before`}</dd></div>
+                  <div className="py-3"><dt className="text-xs font-medium text-muted">Reminder</dt><dd className="mt-1 text-sm">{form.reminderMinutesBefore === null ? "Off" : `1 day and ${form.reminderMinutesBefore === 1440 ? "10 minutes" : form.reminderMinutesBefore === 60 ? "1 hour" : `${form.reminderMinutesBefore} minutes`} before`}</dd></div>
                   {(form.location.trim() || form.subjectId) && <div className="py-3"><dt className="text-xs font-medium text-muted">Details</dt><dd className="mt-1 break-words text-sm">{[form.location.trim(), subjects.find((subject) => subject.id === form.subjectId)?.name].filter(Boolean).join(" · ")}</dd></div>}
                   {form.notes.trim() && <div className="py-3"><dt className="text-xs font-medium text-muted">Notes</dt><dd className="mt-1 whitespace-pre-wrap break-words text-sm">{form.notes.trim()}</dd></div>}
                 </dl>

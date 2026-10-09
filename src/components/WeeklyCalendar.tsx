@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { getRecords } from "@/lib/db";
 import type { CalendarEntryRecord, ClassRecord, SubjectRecord, TaskRecord, TaskPriority } from "@/types/records";
 
@@ -40,6 +40,10 @@ function dayStart(date: Date) {
 
 function sameDay(a: Date, b: Date) {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+}
+
+function dateKey(date: Date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
 function mondayOf(date: Date) {
@@ -163,6 +167,7 @@ export default function WeeklyCalendar() {
   const [subjects, setSubjects] = useState<SubjectRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const weekDayRefs = useRef(new Map<string, HTMLElement>());
 
   useEffect(() => {
     let active = true;
@@ -180,6 +185,11 @@ export default function WeeklyCalendar() {
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, []);
+
+  useEffect(() => {
+    if (view !== "week" || !selectedDate) return;
+    weekDayRefs.current.get(dateKey(selectedDate))?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+  }, [view, selectedDate]);
 
   const subjectMap = useMemo(() => new Map(subjects.map((subject) => [subject.id, subject])), [subjects]);
   const weekDays = useMemo(() => selectedDate ? Array.from({ length: 7 }, (_, index) => {
@@ -235,8 +245,8 @@ export default function WeeklyCalendar() {
           <button type="button" onClick={() => changeDate(1)} className="min-h-11 min-w-11 rounded-xl border border-border text-xl text-muted hover:bg-background" aria-label="Next date">›</button>
         </div>
         <div className="mt-3 flex justify-center rounded-xl bg-background p-1 sm:mt-0" aria-label="Calendar view">
-          {([ ["day", "Daily"], ["week", "Weekly"], ["month", "Monthly"] ] as const).map(([value, label]) => (
-            <button key={value} type="button" onClick={() => setView(value)} aria-pressed={view === value} className={`min-h-10 flex-1 rounded-lg px-3 text-sm font-semibold sm:flex-none ${view === value ? "bg-surface text-accent shadow-sm" : "text-muted hover:text-foreground"}`}>{label}</button>
+          {([["day", "Daily"], ["week", "Weekly"], ["month", "Monthly"]] as const).map(([value, label]) => (
+            <button key={value} type="button" onClick={() => { if (value === "day") setSelectedDate(dayStart(new Date())); setView(value); }} aria-pressed={view === value} className={`min-h-10 flex-1 rounded-lg px-3 text-sm font-semibold sm:flex-none ${view === value ? "bg-surface text-accent shadow-sm" : "text-muted hover:text-foreground"}`}>{label}</button>
           ))}
         </div>
       </header>
@@ -270,13 +280,14 @@ export default function WeeklyCalendar() {
 
         {view === "week" && <section aria-label="Weekly schedule" className="space-y-3">
           <div className="flex items-center justify-between px-1"><p className="text-sm font-semibold text-muted">Swipe to see each day</p><span className="text-xs text-muted">{weekDays.length} days</span></div>
-          <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-3 sm:gap-4">
+          <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain pb-3 sm:gap-4">
             {weekDays.map((date) => {
               const items = filtered(getActivities(date, classes, tasks, entries, subjectMap), activityFilter, priorityFilter);
-              return <article key={date.toISOString()} className="w-[84%] min-w-[84%] snap-start rounded-2xl border border-border bg-surface p-3 sm:w-[48%] sm:min-w-[48%] xl:w-[31%] xl:min-w-[31%]">
-                <button type="button" onClick={() => { setSelectedDate(date); setView("day"); }} className={`mb-3 flex w-full items-center justify-between rounded-xl px-3 py-3 text-left ${sameDay(date, new Date()) ? "bg-accent/10" : "bg-background"}`}>
+              const selected = sameDay(date, selectedDate);
+              return <article key={date.toISOString()} ref={(element) => { const key = dateKey(date); if (element) weekDayRefs.current.set(key, element); else weekDayRefs.current.delete(key); }} aria-current={selected ? "date" : undefined} className={`w-[84%] min-w-[84%] snap-center rounded-2xl border bg-surface p-3 transition-[border-color,box-shadow] sm:w-[48%] sm:min-w-[48%] xl:w-[31%] xl:min-w-[31%] ${selected ? "border-accent/50 ring-2 ring-accent/15" : "border-border"}`}>
+                <button type="button" onClick={() => { setSelectedDate(dayStart(date)); setView("day"); }} aria-label={`Open ${date.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })} in daily view`} className={`mb-3 flex w-full items-center justify-between rounded-xl px-3 py-3 text-left ${selected ? "bg-accent/10" : "bg-background"}`}>
                   <div><p className="text-sm font-semibold">{WEEKDAYS[(date.getDay() + 6) % 7]}</p><p className="mt-1 text-xs text-muted">{date.toLocaleDateString(undefined, { month: "short" })}</p></div>
-                  <span className={`text-4xl font-bold leading-none ${sameDay(date, new Date()) ? "text-accent" : "text-foreground"}`}>{date.getDate()}</span>
+                  <span className={`text-4xl font-bold leading-none ${selected ? "text-accent" : "text-foreground"}`}>{date.getDate()}</span>
                   <span className="rounded-full bg-surface px-2.5 py-1 text-xs text-muted">{items.length} {items.length === 1 ? "item" : "items"}</span>
                 </button>
                 {items.length ? <>
