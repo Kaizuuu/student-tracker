@@ -186,10 +186,10 @@ The scheduled sender is `GET /api/cron/send-reminders`. It reads each private sy
    [Convert]::ToBase64String($bytes)
    ```
    If you want a timezone other than Manila, set `STUDENT_TRACKER_TIME_ZONE` to a valid IANA zone such as `America/Los_Angeles`. Redeploy after adding environment variables.
-3. In cron-job.org, create an enabled job for `https://student-tracker-git-main-rence6.vercel.app/api/cron/send-reminders`, schedule it every 5 minutes, and set the request header `Authorization` to `Bearer <the same CRON_SECRET value>`. Do not include the secret in the URL. The production job is now configured in the signed-in cron-job.org account.
-4. Verify the endpoint by invoking the job once. A successful request returns JSON with `ok: true`. For end-to-end checks, enable push and upload a synced backup, then schedule a task within 15 minutes; check the next 7:00 AM local summary with at least one activity planned for that day. A task reminder and daily summary each send once per user/item/day; an expired browser subscription is removed automatically.
+3. In cron-job.org, create an enabled job for `https://student-tracker-eight-xi.vercel.app/api/cron/send-reminders`, schedule it every 5 minutes, and set the request header `Authorization` to `Bearer <the same CRON_SECRET value>`. Do not include the secret in the URL. The production job is now configured in the signed-in cron-job.org account. Use the direct production domain; the Git branch URL redirects to Vercel sign-in and cannot be called by the scheduler.
+4. Verify the endpoint in cron-job.org History. A successful request returns JSON with `ok: true`; the first scheduled request returned HTTP 200 on 2026-10-09. For end-to-end checks, enable push and upload a synced backup, then schedule a task within 15 minutes; check the next 7:00 AM local summary with at least one activity planned for that day. A task reminder and daily summary each send once per user/item/day; an expired browser subscription is removed automatically.
 
-Vercel Hobby cron only runs once per day, so the free external scheduler is needed for the 5-minute task reminder window. The Production Vercel project has `SUPABASE_SERVICE_ROLE_KEY` and `CRON_SECRET` saved as Secrets, and the updated production deployment is Ready. The enabled five-minute cron-job.org job still needs its first successful execution checked in History.
+Vercel Hobby cron only runs once per day, so the free external scheduler is needed for the 5-minute task reminder window. The Production Vercel project has `SUPABASE_SERVICE_ROLE_KEY` and `CRON_SECRET` saved as Secrets. The enabled five-minute cron-job.org job has returned HTTP 200 from the public production domain.
 
 ### 8.4 Android notification behavior
 
@@ -197,7 +197,7 @@ The service worker requests a brief vibration and keeps the notification in the 
 
 ### 8.5 Install the app
 
-On Android Chrome, open the ⋮ menu and choose **Install app** or **Add to Home screen**. If an older shortcut is already installed, remove that old icon and add Student Tracker again so Android fetches the versioned blue folder artwork from the manifest. On iPhone, open the site in Safari -> Share -> Add to Home Screen. The More page now includes an install button when the browser offers its native prompt.
+On Android Chrome, open `https://student-tracker-eight-xi.vercel.app/`, then use the ⋮ menu and choose **Install app** or **Add to Home screen**. The Git branch URL redirects to Vercel sign-in, so do not use that URL for installation. If an older shortcut is already installed, remove that old icon and add Student Tracker again so Android fetches the versioned blue folder artwork from the manifest. On iPhone, open the site in Safari -> Share -> Add to Home Screen. The More page now includes an install button when the browser offers its native prompt.
 
 ### 8.6 Widget (optional)
 Use the free **Scriptable** app on iPhone to build a home screen widget that reads data from Supabase. This is an extra, not required.
