@@ -4,6 +4,8 @@ export interface BaseRecord {
   updatedAt: string;
 }
 
+export type ReminderMinutesBefore = 10 | 30 | 60 | null;
+
 export interface SubjectRecord extends BaseRecord {
   name: string;
   color: string;
@@ -21,6 +23,7 @@ export interface ClassRecord extends BaseRecord {
   endTime: string;
   room: string;
   teacher: string;
+  reminderMinutesBefore?: ReminderMinutesBefore;
 }
 
 export type TaskPriority = "low" | "medium" | "high";
@@ -31,6 +34,7 @@ export interface TaskRecord extends BaseRecord {
   subjectId: string | null;
   priority: TaskPriority;
   notes: string;
+  reminderMinutesBefore?: ReminderMinutesBefore;
   completedAt: string | null;
   /** Links an automatically created exam preparation task to its exam. */
   examReminderForId?: string;
@@ -92,6 +96,7 @@ export interface CalendarEntryRecord extends BaseRecord {
   subjectId: string | null;
   location: string;
   notes: string;
+  reminderMinutesBefore?: ReminderMinutesBefore;
   /** Prevents deleted generated tasks from being recreated on every load. */
   studyRemindersInitialized?: boolean;
 }

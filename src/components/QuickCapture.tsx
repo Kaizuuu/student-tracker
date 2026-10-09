@@ -3,9 +3,10 @@
 import { useState, type FormEvent } from "react";
 import ChoicePicker from "@/components/ChoicePicker";
 import DateTimePicker from "@/components/DateTimePicker";
+import ReminderPicker from "@/components/ReminderPicker";
 import { addRecord } from "@/lib/db";
 import { parseQuickCapture, type ParsedQuickCapture } from "@/lib/quickCapture";
-import type { TaskPriority } from "@/types/records";
+import type { ReminderMinutesBefore, TaskPriority } from "@/types/records";
 
 function localDateTimeValue(value: Date) {
   const local = new Date(value.getTime() - value.getTimezoneOffset() * 60_000).toISOString();
@@ -16,6 +17,7 @@ export default function QuickCapture({ onTaskAdded }: { onTaskAdded: () => void 
   const [captureText, setCaptureText] = useState("");
   const [draft, setDraft] = useState<ParsedQuickCapture | null>(null);
   const [dueAtInput, setDueAtInput] = useState("");
+  const [reminderMinutesBefore, setReminderMinutesBefore] = useState<ReminderMinutesBefore>(10);
   const [priority, setPriority] = useState<TaskPriority>("medium");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -31,6 +33,7 @@ export default function QuickCapture({ onTaskAdded }: { onTaskAdded: () => void 
     }
     setDraft(parsed);
     setDueAtInput(parsed.dueAt ? localDateTimeValue(new Date(parsed.dueAt)) : "");
+    setReminderMinutesBefore(10);
     setPriority(parsed.priority);
     setError("");
     setNotice("");
@@ -57,6 +60,7 @@ export default function QuickCapture({ onTaskAdded }: { onTaskAdded: () => void 
       await addRecord("tasks", {
         title,
         dueAt: dueDate?.toISOString() ?? null,
+        reminderMinutesBefore,
         subjectId: null,
         priority,
         notes: "",
@@ -101,6 +105,7 @@ export default function QuickCapture({ onTaskAdded }: { onTaskAdded: () => void 
           <div>
             <p className="text-sm font-medium">Due date and time <span className="font-normal text-muted">(optional)</span></p>
             <DateTimePicker id="quick-capture-due" value={dueAtInput} onChange={setDueAtInput} />
+            <div className="mt-3"><ReminderPicker id="quick-capture-reminder" value={reminderMinutesBefore} disabled={!dueAtInput} onChange={setReminderMinutesBefore} /></div>
           </div>
           <div>
             <label htmlFor="quick-capture-priority" className="block text-sm font-medium">Priority</label>

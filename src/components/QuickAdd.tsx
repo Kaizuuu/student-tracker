@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { addRecord } from "@/lib/db";
 import DateTimePicker from "@/components/DateTimePicker";
-import type { CalendarEntryKind } from "@/types/records";
+import ReminderPicker from "@/components/ReminderPicker";
+import type { CalendarEntryKind, ReminderMinutesBefore } from "@/types/records";
 
 type QuickAddKind = "task" | CalendarEntryKind;
 
@@ -27,6 +28,7 @@ export default function QuickAdd() {
   const [activeKind, setActiveKind] = useState<QuickAddKind | null>(null);
   const [title, setTitle] = useState("");
   const [dueAt, setDueAt] = useState("");
+  const [reminderMinutesBefore, setReminderMinutesBefore] = useState<ReminderMinutesBefore>(10);
   const [startsAt, setStartsAt] = useState("");
   const [location, setLocation] = useState("");
   const [error, setError] = useState("");
@@ -51,6 +53,7 @@ export default function QuickAdd() {
   function openForm(kind: QuickAddKind) {
     setTitle("");
     setDueAt("");
+    setReminderMinutesBefore(10);
     setStartsAt(kind === "task" ? "" : defaultCalendarDateTime());
     setLocation("");
     setError("");
@@ -92,6 +95,7 @@ export default function QuickAdd() {
         await addRecord("tasks", {
           title: cleanTitle,
           dueAt: dueDate?.toISOString() ?? null,
+          reminderMinutesBefore,
           subjectId: null,
           priority: "medium",
           notes: "",
@@ -111,6 +115,7 @@ export default function QuickAdd() {
           kind: entryKind,
           title: cleanTitle,
           startsAt: startDate.toISOString(),
+          reminderMinutesBefore,
           endsAt: null,
           subjectId: null,
           location: location.trim(),
@@ -185,6 +190,7 @@ export default function QuickAdd() {
                 <div>
                   <p className="text-sm font-medium">Due date <span className="font-normal text-muted">(optional)</span></p>
                   <DateTimePicker id="quick-add-due" value={dueAt} onChange={setDueAt} />
+                  <div className="mt-4"><ReminderPicker id="quick-add-task-reminder" value={reminderMinutesBefore} disabled={!dueAt} onChange={setReminderMinutesBefore} /></div>
                 </div>
               ) : (
                 <>
@@ -192,6 +198,7 @@ export default function QuickAdd() {
                     <p className="text-sm font-medium">Date and time</p>
                     <DateTimePicker id="quick-add-start" required value={startsAt} onChange={setStartsAt} />
                   </div>
+                  <ReminderPicker id="quick-add-entry-reminder" value={reminderMinutesBefore} onChange={setReminderMinutesBefore} />
                   <div>
                     <label htmlFor="quick-add-location" className="block text-sm font-medium">Location <span className="font-normal text-muted">(optional)</span></label>
                     <input id="quick-add-location" maxLength={120} value={location} onChange={(event) => setLocation(event.target.value)} placeholder="Room or address" className="mt-2 min-h-12 w-full rounded-xl border border-border bg-background px-4 text-base text-foreground outline-none placeholder:text-muted/70 focus:border-accent focus:ring-2 focus:ring-accent/20" />

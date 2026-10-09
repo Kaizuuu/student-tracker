@@ -1,6 +1,6 @@
 import { getBackupRecords } from "@/lib/db";
 import type { StudentTrackerBackup, StudentTrackerBackupRecords } from "@/types/backup";
-import type { CalendarEntryKind, RoutinePeriod, TaskPriority } from "@/types/records";
+import type { CalendarEntryKind, ReminderMinutesBefore, RoutinePeriod, TaskPriority } from "@/types/records";
 
 export const MAX_BACKUP_FILE_BYTES = 10 * 1024 * 1024;
 const MAX_RECORDS_PER_STORE = 50_000;
@@ -28,6 +28,14 @@ function nullableDateString(value: unknown, label: string): string | null {
 
 function nullableString(value: unknown, label: string): string | null {
   return value === null ? null : requiredString(value, label);
+}
+
+function parseReminderMinutesBefore(value: unknown, label: string): ReminderMinutesBefore | undefined {
+  if (value === undefined) return undefined;
+  if (value !== null && value !== 10 && value !== 30 && value !== 60) {
+    throw new Error(`${label} must be 10, 30, 60, or null.`);
+  }
+  return value as ReminderMinutesBefore;
 }
 
 function parseBase(value: unknown, label: string) {
@@ -125,6 +133,7 @@ export function parseBackup(text: string): StudentTrackerBackup {
       const endTime = requiredString(item.endTime, `${label}.endTime`);
       if (!Number.isInteger(dayOfWeek) || Number(dayOfWeek) < 0 || Number(dayOfWeek) > 6) throw new Error(`${label}.dayOfWeek must be from 0 to 6.`);
       if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(startTime) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(endTime)) throw new Error(`${label} has an invalid class time.`);
+      const reminder = parseReminderMinutesBefore(item.reminderMinutesBefore, `${label}.reminderMinutesBefore`);
       return {
         ...base,
         subjectId: nullableString(item.subjectId, `${label}.subjectId`),
@@ -133,6 +142,7 @@ export function parseBackup(text: string): StudentTrackerBackup {
         endTime,
         room: requiredString(item.room, `${label}.room`, true),
         teacher: requiredString(item.teacher, `${label}.teacher`, true),
+        ...(reminder === undefined ? {} : { reminderMinutesBefore: reminder }),
       };
     }),
     tasks: recordArray(raw.tasks, "tasks").map((item, index) => {
@@ -143,6 +153,7 @@ export function parseBackup(text: string): StudentTrackerBackup {
       if (priority !== "low" && priority !== "medium" && priority !== "high") throw new Error(`${label}.priority is invalid.`);
       const reminderOffset = item.examReminderOffsetDays;
       if (reminderOffset !== undefined && reminderOffset !== 1 && reminderOffset !== 3 && reminderOffset !== 7) throw new Error(`${label}.examReminderOffsetDays is invalid.`);
+      const reminder = parseReminderMinutesBefore(item.reminderMinutesBefore, `${label}.reminderMinutesBefore`);
       return {
         ...base,
         title: requiredString(item.title, `${label}.title`),
@@ -151,6 +162,7 @@ export function parseBackup(text: string): StudentTrackerBackup {
         priority: priority as TaskPriority,
         notes: requiredString(item.notes, `${label}.notes`, true),
         completedAt: nullableDateString(item.completedAt, `${label}.completedAt`),
+        ...(reminder === undefined ? {} : { reminderMinutesBefore: reminder }),
         ...(item.examReminderForId === undefined ? {} : { examReminderForId: requiredString(item.examReminderForId, `${label}.examReminderForId`) }),
         ...(reminderOffset === undefined ? {} : { examReminderOffsetDays: reminderOffset as 1 | 3 | 7 }),
       };
@@ -175,6 +187,7 @@ export function parseBackup(text: string): StudentTrackerBackup {
       const kind = item.kind;
       if (kind !== "exam" && kind !== "event") throw new Error(`${label}.kind is invalid.`);
       if (item.studyRemindersInitialized !== undefined && typeof item.studyRemindersInitialized !== "boolean") throw new Error(`${label}.studyRemindersInitialized must be true or false.`);
+      const reminder = parseReminderMinutesBefore(item.reminderMinutesBefore, `${label}.reminderMinutesBefore`);
       return {
         ...base,
         kind: kind as CalendarEntryKind,
@@ -184,6 +197,7 @@ export function parseBackup(text: string): StudentTrackerBackup {
         subjectId: nullableString(item.subjectId, `${label}.subjectId`),
         location: requiredString(item.location, `${label}.location`, true),
         notes: requiredString(item.notes, `${label}.notes`, true),
+        ...(reminder === undefined ? {} : { reminderMinutesBefore: reminder }),
         ...(item.studyRemindersInitialized === undefined ? {} : { studyRemindersInitialized: item.studyRemindersInitialized }),
       };
     }),

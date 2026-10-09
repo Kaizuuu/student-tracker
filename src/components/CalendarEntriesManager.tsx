@@ -7,16 +7,18 @@ import EntryWizard from "@/components/EntryWizard";
 import ChoicePicker from "@/components/ChoicePicker";
 import DatePicker from "@/components/DatePicker";
 import TimePicker from "@/components/TimePicker";
+import ReminderPicker from "@/components/ReminderPicker";
 import { dueDateBadgeClasses, dueDateTextClasses, getDueDateTone } from "@/lib/dueDateTone";
 import { downloadCalendarItem } from "@/lib/ics";
 import { initializeUnmarkedExamReminders, syncExamStudyReminders } from "@/lib/examReminders";
-import type { CalendarEntryKind, CalendarEntryRecord, SubjectRecord } from "@/types/records";
+import type { CalendarEntryKind, CalendarEntryRecord, ReminderMinutesBefore, SubjectRecord } from "@/types/records";
 
 type EntryForm = {
   kind: CalendarEntryKind;
   title: string;
   date: string;
   time: string;
+  reminderMinutesBefore: ReminderMinutesBefore;
   subjectId: string;
   location: string;
   notes: string;
@@ -27,6 +29,7 @@ const EMPTY_FORM: EntryForm = {
   title: "",
   date: "",
   time: "09:00",
+  reminderMinutesBefore: 10,
   subjectId: "",
   location: "",
   notes: "",
@@ -124,6 +127,7 @@ export default function CalendarEntriesManager() {
       title: entry.title,
       date: local.date,
       time: local.time,
+      reminderMinutesBefore: entry.reminderMinutesBefore === undefined ? 10 : entry.reminderMinutesBefore,
       subjectId: entry.subjectId ?? "",
       location: entry.location,
       notes: entry.notes,
@@ -189,6 +193,7 @@ export default function CalendarEntriesManager() {
       kind: form.kind,
       title,
       startsAt: start.toISOString(),
+      reminderMinutesBefore: form.reminderMinutesBefore,
       endsAt: null,
       subjectId: form.subjectId || null,
       location: form.location.trim(),
@@ -304,6 +309,7 @@ export default function CalendarEntriesManager() {
                     <TimePicker id="entry-time" value={form.time} onChange={(time) => setForm({ ...form, time })} />
                   </div>
                 </div>
+                <ReminderPicker id="entry-reminder" value={form.reminderMinutesBefore} onChange={(reminderMinutesBefore) => setForm({ ...form, reminderMinutesBefore })} />
               </div>
             )}
             {wizardStep === 1 && (
@@ -328,6 +334,7 @@ export default function CalendarEntriesManager() {
                 <dl className="mt-4 divide-y divide-border rounded-2xl border border-border bg-background px-4">
                   <div className="py-3"><dt className="text-xs font-medium text-muted">Type and title</dt><dd className="mt-1 break-words text-sm font-semibold">{form.kind === "exam" ? "Exam" : "Event"} · {form.title.trim() || "Untitled"}</dd></div>
                   <div className="py-3"><dt className="text-xs font-medium text-muted">When</dt><dd className="mt-1 text-sm">{form.date && form.time ? format(new Date(`${form.date}T${form.time}`), "EEEE, MMMM d 'at' h:mm a") : "Choose a date and time"}</dd></div>
+                  <div className="py-3"><dt className="text-xs font-medium text-muted">Reminder</dt><dd className="mt-1 text-sm">{form.reminderMinutesBefore === null ? "Off" : form.reminderMinutesBefore === 60 ? "1 hour before" : `${form.reminderMinutesBefore} minutes before`}</dd></div>
                   {(form.location.trim() || form.subjectId) && <div className="py-3"><dt className="text-xs font-medium text-muted">Details</dt><dd className="mt-1 break-words text-sm">{[form.location.trim(), subjects.find((subject) => subject.id === form.subjectId)?.name].filter(Boolean).join(" · ")}</dd></div>}
                   {form.notes.trim() && <div className="py-3"><dt className="text-xs font-medium text-muted">Notes</dt><dd className="mt-1 whitespace-pre-wrap break-words text-sm">{form.notes.trim()}</dd></div>}
                 </dl>

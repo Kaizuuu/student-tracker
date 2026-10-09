@@ -4,9 +4,9 @@ import * as webPush from "web-push";
 export const runtime = "nodejs";
 
 type BackupRecords = {
-  tasks: Array<{ id: string; title: string; dueAt: string | null; completedAt: string | null }>;
-  classes: Array<{ id: string; subjectId: string | null; dayOfWeek: number; startTime: string }>;
-  calendarEntries: Array<{ id: string; kind: "exam" | "event"; title: string; startsAt: string }>;
+  tasks: Array<{ id: string; title: string; dueAt: string | null; completedAt: string | null; reminderMinutesBefore?: 10 | 30 | 60 | null }>;
+  classes: Array<{ id: string; subjectId: string | null; dayOfWeek: number; startTime: string; reminderMinutesBefore?: 10 | 30 | 60 | null }>;
+  calendarEntries: Array<{ id: string; kind: "exam" | "event"; title: string; startsAt: string; reminderMinutesBefore?: 10 | 30 | 60 | null }>;
   subjects: Array<{ id: string; name: string }>;
 };
 type Subscription = { endpoint: string; p256dh: string; auth: string };
@@ -15,7 +15,8 @@ type AdminClient = ReturnType<typeof createClient<any>>;
 
 const TIME_ZONE = process.env.STUDENT_TRACKER_TIME_ZONE || "Asia/Manila";
 const SUMMARY_HOUR = 7;
-const DUE_SOON_MINUTES = 15;
+const DEFAULT_REMINDER_MINUTES = 10;
+const REMINDER_WINDOW_MINUTES = 6;
 
 function localDateKey(date: Date, timeZone: string) {
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -37,6 +38,62 @@ function dayOfWeek(dateKey: string) {
   return new Date(Date.UTC(year, month - 1, day)).getUTCDay();
 }
 
+function dateKeyAfter(dateKey: string, days: number) {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day + days)).toISOString().slice(0, 10);
+}
+
+function zonedDateTime(dateKey: string, time: string, timeZone: string) {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  const [hour, minute] = time.split(":").map(Number);
+  const desired = Date.UTC(year, month - 1, day, hour, minute);
+  let estimate = desired;
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  });
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const parts = formatter.formatToParts(new Date(estimate));
+    const part = (type: Intl.DateTimeFormatPartTypes) => Number(parts.find((item) => item.type === type)?.value ?? 0);
+    const represented = Date.UTC(part("year"), part("month") - 1, part("day"), part("hour"), part("minute"));
+    const correction = desired - represented;
+    estimate += correction;
+    if (correction === 0) break;
+  }
+  return new Date(estimate);
+}
+
+function reminderOffset(value: number | null | undefined) {
+  if (value === null) return null;
+  return value === 10 || value === 30 || value === 60 ? value : DEFAULT_REMINDER_MINUTES;
+}
+
+function reminderWindowIsOpen(startsAt: Date, offset: number | null, now: Date) {
+  if (offset === null || !Number.isFinite(startsAt.getTime())) return false;
+  const minutesUntilStart = (startsAt.getTime() - now.getTime()) / 60_000;
+  return minutesUntilStart > offset - REMINDER_WINDOW_MINUTES && minutesUntilStart <= offset;
+}
+
+function reminderLeadLabel(minutes: number) {
+  return minutes === 60 ? "1 hour" : `${minutes} minutes`;
+}
+
+function nextClassStart(classItem: BackupRecords["classes"][number], now: Date) {
+  const today = localDateKey(now, TIME_ZONE);
+  for (let dayOffset = 0; dayOffset <= 7; dayOffset += 1) {
+    const dateKey = dateKeyAfter(today, dayOffset);
+    if (dayOfWeek(dateKey) !== classItem.dayOfWeek) continue;
+    const startsAt = zonedDateTime(dateKey, classItem.startTime, TIME_ZONE);
+    if (startsAt > now) return startsAt;
+  }
+  return null;
+}
+
 function isBackup(value: unknown): value is { app: "student-tracker"; records: BackupRecords } {
   if (typeof value !== "object" || value === null) return false;
   const backup = value as { app?: unknown; records?: unknown };
@@ -53,15 +110,45 @@ function remindersForBackup(records: BackupRecords, now: Date, dateKey: string):
   for (const task of records.tasks) {
     if (!task || typeof task.id !== "string" || typeof task.title !== "string" || task.completedAt || !task.dueAt) continue;
     const due = new Date(task.dueAt);
-    const minutesUntilDue = (due.getTime() - now.getTime()) / 60_000;
-    if (Number.isFinite(minutesUntilDue) && minutesUntilDue >= 0 && minutesUntilDue <= DUE_SOON_MINUTES) {
+    const offset = reminderOffset(task.reminderMinutesBefore);
+    if (reminderWindowIsOpen(due, offset, now)) {
       reminders.push({
-        key: `task:${task.id}:${task.dueAt}`,
-        title: "Task due soon",
-        body: task.title,
+        key: `task:${task.id}:${task.dueAt}:before:${offset}`,
+        title: "Task reminder",
+        body: `${task.title} is due in ${reminderLeadLabel(offset!)}.`,
         url: "/tasks",
       });
     }
+  }
+
+  for (const entry of records.calendarEntries) {
+    if (!entry || typeof entry.id !== "string" || typeof entry.title !== "string") continue;
+    const startsAt = new Date(entry.startsAt);
+    const offset = reminderOffset(entry.reminderMinutesBefore);
+    if (reminderWindowIsOpen(startsAt, offset, now)) {
+      const kind = entry.kind === "exam" ? "Exam" : "Event";
+      reminders.push({
+        key: `${kind.toLowerCase()}:${entry.id}:${entry.startsAt}:before:${offset}`,
+        title: `${kind} reminder`,
+        body: `${entry.title} starts in ${reminderLeadLabel(offset!)}.`,
+        url: "/calendar",
+      });
+    }
+  }
+
+  for (const classItem of records.classes) {
+    if (!classItem || typeof classItem.id !== "string" || !Number.isInteger(classItem.dayOfWeek) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(classItem.startTime)) continue;
+    const startsAt = nextClassStart(classItem, now);
+    const offset = reminderOffset(classItem.reminderMinutesBefore);
+    if (!startsAt || !reminderWindowIsOpen(startsAt, offset, now)) continue;
+    const subject = classItem.subjectId ? subjectNames.get(classItem.subjectId) : undefined;
+    const classLabel = subject ? `${subject} class` : "Class";
+    reminders.push({
+      key: `class:${classItem.id}:${startsAt.toISOString()}:before:${offset}`,
+      title: "Class reminder",
+      body: `${classLabel} starts in ${reminderLeadLabel(offset!)}.`,
+      url: "/classes",
+    });
   }
 
   if (localHour(now, TIME_ZONE) === SUMMARY_HOUR) {

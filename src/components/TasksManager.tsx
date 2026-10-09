@@ -6,15 +6,17 @@ import { addRecord, deleteRecord, deleteTask, getRecords, updateRecord } from "@
 import EntryWizard from "@/components/EntryWizard";
 import ChoicePicker from "@/components/ChoicePicker";
 import DateTimePicker from "@/components/DateTimePicker";
+import ReminderPicker from "@/components/ReminderPicker";
 import { dueDateTextClasses, getDueDateTone } from "@/lib/dueDateTone";
 import { downloadCalendarItem } from "@/lib/ics";
-import type { SubtaskRecord, SubjectRecord, TaskPriority, TaskRecord } from "@/types/records";
+import type { ReminderMinutesBefore, SubtaskRecord, SubjectRecord, TaskPriority, TaskRecord } from "@/types/records";
 
 type TaskFilter = "all" | "open" | "completed";
 
 type TaskForm = {
   title: string;
   dueAt: string;
+  reminderMinutesBefore: ReminderMinutesBefore;
   subjectId: string;
   priority: TaskPriority;
   notes: string;
@@ -23,6 +25,7 @@ type TaskForm = {
 const EMPTY_FORM: TaskForm = {
   title: "",
   dueAt: "",
+  reminderMinutesBefore: 10,
   subjectId: "",
   priority: "medium",
   notes: "",
@@ -130,6 +133,7 @@ export default function TasksManager() {
     setForm({
       title: task.title,
       dueAt: toLocalInputValue(task.dueAt),
+      reminderMinutesBefore: task.reminderMinutesBefore === undefined ? 10 : task.reminderMinutesBefore,
       subjectId: task.subjectId ?? "",
       priority: task.priority,
       notes: task.notes,
@@ -185,6 +189,7 @@ export default function TasksManager() {
     const fields = {
       title,
       dueAt: dueAt ? dueAt.toISOString() : null,
+      reminderMinutesBefore: form.reminderMinutesBefore,
       subjectId: form.subjectId || null,
       priority: form.priority,
       notes: form.notes.trim(),
@@ -297,6 +302,7 @@ export default function TasksManager() {
                   <p className="text-sm font-medium">When is it due? <span className="font-normal text-muted">(optional)</span></p>
                   <DateTimePicker id="task-due" value={form.dueAt} onChange={(dueAt) => setForm({ ...form, dueAt })} />
                 </div>
+                <ReminderPicker id="task-reminder" value={form.reminderMinutesBefore} disabled={!form.dueAt} onChange={(reminderMinutesBefore) => setForm({ ...form, reminderMinutesBefore })} />
               </div>
             )}
             {wizardStep === 1 && (
@@ -328,6 +334,7 @@ export default function TasksManager() {
                 <dl className="mt-4 divide-y divide-border rounded-2xl border border-border bg-background px-4">
                   <div className="py-3"><dt className="text-xs font-medium text-muted">Task</dt><dd className="mt-1 break-words text-sm font-semibold">{form.title.trim() || "Untitled task"}</dd></div>
                   <div className="py-3"><dt className="text-xs font-medium text-muted">Due</dt><dd className="mt-1 text-sm">{form.dueAt ? new Date(form.dueAt).toLocaleString() : "No due date"}</dd></div>
+                  <div className="py-3"><dt className="text-xs font-medium text-muted">Reminder</dt><dd className="mt-1 text-sm">{form.reminderMinutesBefore === null ? "Off" : form.reminderMinutesBefore === 60 ? "1 hour before" : `${form.reminderMinutesBefore} minutes before`}</dd></div>
                   <div className="py-3"><dt className="text-xs font-medium text-muted">Subject and priority</dt><dd className="mt-1 text-sm">{subjects.find((subject) => subject.id === form.subjectId)?.name ?? "No subject"} · {form.priority}</dd></div>
                   {form.notes.trim() && <div className="py-3"><dt className="text-xs font-medium text-muted">Notes</dt><dd className="mt-1 whitespace-pre-wrap break-words text-sm">{form.notes.trim()}</dd></div>}
                 </dl>

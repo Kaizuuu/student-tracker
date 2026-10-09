@@ -5,9 +5,10 @@ import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react
 import { addRecord, deleteRecord, getRecords, updateRecord } from "@/lib/db";
 import EntryWizard from "@/components/EntryWizard";
 import ChoicePicker from "@/components/ChoicePicker";
+import ReminderPicker from "@/components/ReminderPicker";
 import ScheduleImageImport from "@/components/ScheduleImageImport";
 import TimePicker from "@/components/TimePicker";
-import type { ClassRecord, SubjectRecord } from "@/types/records";
+import type { ClassRecord, ReminderMinutesBefore, SubjectRecord } from "@/types/records";
 
 const WEEKDAYS = [
   { value: 1, label: "Monday", short: "Mon" },
@@ -19,8 +20,9 @@ const WEEKDAYS = [
   { value: 0, label: "Sunday", short: "Sun" },
 ] as const;
 
-type ClassForm = Omit<ClassRecord, "id" | "createdAt" | "updatedAt" | "subjectId"> & {
+type ClassForm = Omit<ClassRecord, "id" | "createdAt" | "updatedAt" | "subjectId" | "reminderMinutesBefore"> & {
   subjectId: string;
+  reminderMinutesBefore: ReminderMinutesBefore;
 };
 
 const EMPTY_FORM: ClassForm = {
@@ -30,6 +32,7 @@ const EMPTY_FORM: ClassForm = {
   endTime: "10:00",
   room: "",
   teacher: "",
+  reminderMinutesBefore: 10,
 };
 
 const CLASS_DAY_OPTIONS = WEEKDAYS.map((day) => ({ value: String(day.value), label: day.label, marker: day.short.slice(0, 1) }));
@@ -112,6 +115,7 @@ export default function ClassesManager() {
       endTime: classItem.endTime,
       room: classItem.room,
       teacher: classItem.teacher,
+      reminderMinutesBefore: classItem.reminderMinutesBefore === undefined ? 10 : classItem.reminderMinutesBefore,
     });
     setWizardStep(0);
     setFormError("");
@@ -228,6 +232,7 @@ export default function ClassesManager() {
         endTime: draft.endTime,
         room: draft.room.trim(),
         teacher: draft.teacher.trim(),
+        reminderMinutesBefore: 10,
       });
     }
 
@@ -292,6 +297,7 @@ export default function ClassesManager() {
                     <TimePicker id="class-end" value={form.endTime} onChange={(endTime) => setForm({ ...form, endTime })} />
                   </div>
                 </div>
+                <ReminderPicker id="class-reminder" value={form.reminderMinutesBefore} onChange={(reminderMinutesBefore) => setForm({ ...form, reminderMinutesBefore })} />
               </div>
             )}
             {wizardStep === 1 && (
@@ -312,6 +318,7 @@ export default function ClassesManager() {
                 <dl className="mt-4 divide-y divide-border rounded-2xl border border-border bg-background px-4">
                   <div className="py-3"><dt className="text-xs font-medium text-muted">Subject</dt><dd className="mt-1 truncate text-sm font-semibold">{subjects.find((subject) => subject.id === form.subjectId)?.name ?? "No subject"}</dd></div>
                   <div className="py-3"><dt className="text-xs font-medium text-muted">Repeats</dt><dd className="mt-1 text-sm">{WEEKDAYS.find((day) => day.value === form.dayOfWeek)?.label ?? "Monday"}, {formatTime(form.startTime)}–{formatTime(form.endTime)}</dd></div>
+                  <div className="py-3"><dt className="text-xs font-medium text-muted">Reminder</dt><dd className="mt-1 text-sm">{form.reminderMinutesBefore === null ? "Off" : form.reminderMinutesBefore === 60 ? "1 hour before each class" : `${form.reminderMinutesBefore} minutes before each class`}</dd></div>
                   {(form.room.trim() || form.teacher.trim()) && <div className="py-3"><dt className="text-xs font-medium text-muted">More details</dt><dd className="mt-1 truncate text-sm">{[form.room.trim(), form.teacher.trim()].filter(Boolean).join(" · ")}</dd></div>}
                 </dl>
               </div>
