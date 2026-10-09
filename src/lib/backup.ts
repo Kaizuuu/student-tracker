@@ -32,8 +32,8 @@ function nullableString(value: unknown, label: string): string | null {
 
 function parseReminderMinutesBefore(value: unknown, label: string): ReminderMinutesBefore | undefined {
   if (value === undefined) return undefined;
-  if (value !== null && value !== 10 && value !== 30 && value !== 60) {
-    throw new Error(`${label} must be 10, 30, 60, or null.`);
+  if (value !== null && value !== 10 && value !== 30 && value !== 60 && value !== 1440) {
+    throw new Error(`${label} must be 10, 30, 60, 1440, or null.`);
   }
   return value as ReminderMinutesBefore;
 }

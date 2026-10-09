@@ -4,9 +4,9 @@ import * as webPush from "web-push";
 export const runtime = "nodejs";
 
 type BackupRecords = {
-  tasks: Array<{ id: string; title: string; dueAt: string | null; completedAt: string | null; reminderMinutesBefore?: 10 | 30 | 60 | null }>;
-  classes: Array<{ id: string; subjectId: string | null; dayOfWeek: number; startTime: string; reminderMinutesBefore?: 10 | 30 | 60 | null }>;
-  calendarEntries: Array<{ id: string; kind: "exam" | "event"; title: string; startsAt: string; reminderMinutesBefore?: 10 | 30 | 60 | null }>;
+  tasks: Array<{ id: string; title: string; dueAt: string | null; completedAt: string | null; reminderMinutesBefore?: 10 | 30 | 60 | 1440 | null }>;
+  classes: Array<{ id: string; subjectId: string | null; dayOfWeek: number; startTime: string; reminderMinutesBefore?: 10 | 30 | 60 | 1440 | null }>;
+  calendarEntries: Array<{ id: string; kind: "exam" | "event"; title: string; startsAt: string; reminderMinutesBefore?: 10 | 30 | 60 | 1440 | null }>;
   subjects: Array<{ id: string; name: string }>;
 };
 type Subscription = { endpoint: string; p256dh: string; auth: string };
@@ -70,7 +70,7 @@ function zonedDateTime(dateKey: string, time: string, timeZone: string) {
 
 function reminderOffset(value: number | null | undefined) {
   if (value === null) return null;
-  return value === 10 || value === 30 || value === 60 ? value : DEFAULT_REMINDER_MINUTES;
+  return value === 10 || value === 30 || value === 60 || value === 1440 ? value : DEFAULT_REMINDER_MINUTES;
 }
 
 function reminderWindowIsOpen(startsAt: Date, offset: number | null, now: Date) {
@@ -80,6 +80,7 @@ function reminderWindowIsOpen(startsAt: Date, offset: number | null, now: Date) 
 }
 
 function reminderLeadLabel(minutes: number) {
+  if (minutes === 1440) return "1 day";
   return minutes === 60 ? "1 hour" : `${minutes} minutes`;
 }
 

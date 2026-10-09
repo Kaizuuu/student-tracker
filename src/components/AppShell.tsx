@@ -72,7 +72,9 @@ export default function AppShell({ children }: { children: ReactNode }) {
       </header>
 
       <main className="mx-auto min-w-0 w-full max-w-5xl flex-1 px-5 pb-32 pt-8 sm:px-8 sm:pb-36 sm:pt-12">
-        {children}
+        <div key={pathname} className="app-page-enter">
+          {children}
+        </div>
       </main>
 
       <nav aria-label="Main navigation" className="fixed inset-x-0 bottom-0 z-30 px-4 pb-[calc(env(safe-area-inset-bottom)+0.8rem)]">

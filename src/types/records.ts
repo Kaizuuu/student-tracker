@@ -4,7 +4,7 @@ export interface BaseRecord {
   updatedAt: string;
 }
 
-export type ReminderMinutesBefore = 10 | 30 | 60 | null;
+export type ReminderMinutesBefore = 10 | 30 | 60 | 1440 | null;
 
 export interface SubjectRecord extends BaseRecord {
   name: string;

@@ -89,7 +89,7 @@ export default function ChoicePicker({ id, value, options, onChange, placeholder
         <svg className={`size-4 shrink-0 text-muted transition-transform duration-200 ${open ? "rotate-180 text-accent" : "group-hover:text-foreground"}`} viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="m5 7.5 5 5 5-5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" /></svg>
       </button>
 
-      {open && <div id={listId} role="listbox" aria-labelledby={id} className="absolute inset-x-0 top-[calc(100%+0.55rem)] z-50 max-h-72 overflow-y-auto rounded-2xl border border-border bg-surface p-1.5 shadow-[0_18px_45px_rgb(27_58_78_/_18%)] overscroll-contain">
+      {open && <div id={listId} role="listbox" aria-labelledby={id} className="picker-pop-in absolute inset-x-0 top-[calc(100%+0.55rem)] z-50 max-h-72 overflow-y-auto rounded-2xl border border-border bg-surface p-1.5 shadow-[0_18px_45px_rgb(27_58_78_/_18%)] overscroll-contain">
         {options.map((option, index) => {
           const isSelected = option.value === value;
           return <button

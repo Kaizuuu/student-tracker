@@ -7,6 +7,7 @@ const options = [
   { value: "10", label: "10 minutes before", marker: "10", description: "A quick heads-up" },
   { value: "30", label: "30 minutes before", marker: "30", description: "Time to get ready" },
   { value: "60", label: "1 hour before", marker: "1h", description: "Plan ahead" },
+  { value: "1440", label: "1 day before", marker: "1d", description: "A reminder the day before" },
   { value: "none", label: "No reminder", marker: "×", description: "Turn off push for this item" },
 ];
 

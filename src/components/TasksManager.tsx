@@ -334,7 +334,7 @@ export default function TasksManager() {
                 <dl className="mt-4 divide-y divide-border rounded-2xl border border-border bg-background px-4">
                   <div className="py-3"><dt className="text-xs font-medium text-muted">Task</dt><dd className="mt-1 break-words text-sm font-semibold">{form.title.trim() || "Untitled task"}</dd></div>
                   <div className="py-3"><dt className="text-xs font-medium text-muted">Due</dt><dd className="mt-1 text-sm">{form.dueAt ? new Date(form.dueAt).toLocaleString() : "No due date"}</dd></div>
-                  <div className="py-3"><dt className="text-xs font-medium text-muted">Reminder</dt><dd className="mt-1 text-sm">{form.reminderMinutesBefore === null ? "Off" : form.reminderMinutesBefore === 60 ? "1 hour before" : `${form.reminderMinutesBefore} minutes before`}</dd></div>
+                  <div className="py-3"><dt className="text-xs font-medium text-muted">Reminder</dt><dd className="mt-1 text-sm">{form.reminderMinutesBefore === null ? "Off" : form.reminderMinutesBefore === 1440 ? "1 day before" : form.reminderMinutesBefore === 60 ? "1 hour before" : `${form.reminderMinutesBefore} minutes before`}</dd></div>
                   <div className="py-3"><dt className="text-xs font-medium text-muted">Subject and priority</dt><dd className="mt-1 text-sm">{subjects.find((subject) => subject.id === form.subjectId)?.name ?? "No subject"} · {form.priority}</dd></div>
                   {form.notes.trim() && <div className="py-3"><dt className="text-xs font-medium text-muted">Notes</dt><dd className="mt-1 whitespace-pre-wrap break-words text-sm">{form.notes.trim()}</dd></div>}
                 </dl>

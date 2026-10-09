@@ -176,7 +176,7 @@ export default function PushNotificationsManager() {
         <div className="min-w-0">
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-accent">Optional · device reminders</p>
           <h2 id="push-heading" className="mt-1 text-xl font-semibold">Push notifications</h2>
-          <p className="mt-2 max-w-xl text-sm leading-6 text-muted">Get reminders for tasks, classes, exams, and events even when the planner is closed. Choose 10 minutes, 30 minutes, or 1 hour before each item. Upload your latest planner in Sync across devices after changes so scheduled reminders stay current.</p>
+          <p className="mt-2 max-w-xl text-sm leading-6 text-muted">Get reminders for tasks, classes, exams, and events even when the planner is closed. Choose 10 minutes, 30 minutes, 1 hour, or 1 day before each item. Upload your latest planner in Sync across devices after changes so scheduled reminders stay current.</p>
         </div>
         <span className={`rounded-full px-3 py-1 text-xs font-semibold ${subscription ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : "bg-accent/10 text-accent"}`}>
           {subscription ? "Enabled" : supported ? "Not enabled" : "Unavailable"}

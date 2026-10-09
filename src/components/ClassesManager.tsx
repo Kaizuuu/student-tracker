@@ -318,7 +318,7 @@ export default function ClassesManager() {
                 <dl className="mt-4 divide-y divide-border rounded-2xl border border-border bg-background px-4">
                   <div className="py-3"><dt className="text-xs font-medium text-muted">Subject</dt><dd className="mt-1 truncate text-sm font-semibold">{subjects.find((subject) => subject.id === form.subjectId)?.name ?? "No subject"}</dd></div>
                   <div className="py-3"><dt className="text-xs font-medium text-muted">Repeats</dt><dd className="mt-1 text-sm">{WEEKDAYS.find((day) => day.value === form.dayOfWeek)?.label ?? "Monday"}, {formatTime(form.startTime)}–{formatTime(form.endTime)}</dd></div>
-                  <div className="py-3"><dt className="text-xs font-medium text-muted">Reminder</dt><dd className="mt-1 text-sm">{form.reminderMinutesBefore === null ? "Off" : form.reminderMinutesBefore === 60 ? "1 hour before each class" : `${form.reminderMinutesBefore} minutes before each class`}</dd></div>
+                  <div className="py-3"><dt className="text-xs font-medium text-muted">Reminder</dt><dd className="mt-1 text-sm">{form.reminderMinutesBefore === null ? "Off" : form.reminderMinutesBefore === 1440 ? "1 day before each class" : form.reminderMinutesBefore === 60 ? "1 hour before each class" : `${form.reminderMinutesBefore} minutes before each class`}</dd></div>
                   {(form.room.trim() || form.teacher.trim()) && <div className="py-3"><dt className="text-xs font-medium text-muted">More details</dt><dd className="mt-1 truncate text-sm">{[form.room.trim(), form.teacher.trim()].filter(Boolean).join(" · ")}</dd></div>}
                 </dl>
               </div>
