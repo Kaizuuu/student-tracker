@@ -7,6 +7,7 @@ import type { ReactNode } from "react";
 import ThemeToggle from "@/components/ThemeToggle";
 import QuickAdd from "@/components/QuickAdd";
 import PwaInstallProvider from "@/components/PwaInstallProvider";
+import ReminderCenter from "@/components/ReminderCenter";
 
 const tabs = [
   { href: "/", label: "Today", icon: "today" },
@@ -84,6 +85,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
           {tabs.slice(2).map(renderTab)}
         </div>
       </nav>
+      <ReminderCenter />
     </div>
     </PwaInstallProvider>
   );

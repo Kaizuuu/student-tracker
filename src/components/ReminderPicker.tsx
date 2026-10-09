@@ -31,7 +31,7 @@ export default function ReminderPicker({
         disabled={disabled}
         onChange={(next) => onChange(next === "none" ? null : Number(next) as ReminderMinutesBefore)}
       />
-      <p className="mt-1 text-xs leading-5 text-muted">{disabled ? "Add a due date and time to turn on reminders." : "A day-before reminder is automatic. Choose an extra alert or turn all reminders off. Push reminders are checked about every 5 minutes."}</p>
+      <p className="mt-1 text-xs leading-5 text-muted">{disabled ? "Add a due date and time to turn on reminders." : "A day-before reminder is automatic. Choose an extra alert or turn all reminders off. Browser alerts while the planner is closed need notifications enabled and a current cloud upload."}</p>
     </div>
   );
 }

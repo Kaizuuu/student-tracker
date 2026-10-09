@@ -1,5 +1,5 @@
 const CACHE_PREFIX = "student-tracker-";
-const CACHE_NAME = `${CACHE_PREFIX}v4`;
+const CACHE_NAME = `${CACHE_PREFIX}v5`;
 const PRECACHE_URLS = [
   "/",
   "/offline.html",
@@ -44,17 +44,29 @@ self.addEventListener("push", (event) => {
   const title = typeof payload.title === "string" ? payload.title : "Student Tracker";
   const body = typeof payload.body === "string" ? payload.body : "You have an upcoming planner item.";
   const target = typeof payload.url === "string" && payload.url.startsWith("/") && !payload.url.startsWith("//") ? payload.url : "/";
+  const reminder = {
+    key: typeof payload.key === "string" ? payload.key : typeof payload.tag === "string" ? payload.tag : `push:${title}:${body}`,
+    title,
+    body,
+    url: target,
+  };
 
   event.waitUntil(
-    self.registration.showNotification(title, {
-      body,
-      icon: "/icon-192.png",
-      badge: "/icon-192.png",
-      tag: typeof payload.tag === "string" ? payload.tag : "student-tracker-reminder",
-      requireInteraction: true,
-      vibrate: [180, 100, 180],
-      data: { url: target },
-    }),
+    Promise.all([
+      self.registration.showNotification(title, {
+        body,
+        icon: "/icon-192.png",
+        badge: "/icon-192.png",
+        tag: typeof payload.tag === "string" ? payload.tag : "student-tracker-reminder",
+        requireInteraction: true,
+        vibrate: [180, 100, 180],
+        data: { url: target },
+      }),
+      self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((windows) => {
+        const targetWindow = windows.find((client) => client.visibilityState === "visible") ?? windows[0];
+        targetWindow?.postMessage({ type: "student-tracker-reminder", reminder });
+      }),
+    ]),
   );
 });
 
