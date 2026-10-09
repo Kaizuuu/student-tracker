@@ -138,13 +138,14 @@ Only start this after Phases 1-2 are done.
    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
    ```
 4. In Supabase -> SQL Editor, run [`supabase/user_backups.sql`](supabase/user_backups.sql). It creates the one-row-per-user JSON backup table and policies that restrict each signed-in user to their own data.
-5. In Authentication -> URL Configuration, set the Site URL to `http://localhost:3000` while developing and add these redirect URLs (include the port you actually use locally):
+5. In Authentication -> URL Configuration, set the Site URL to the production app URL `https://student-tracker-git-main-rence6.vercel.app/more`. Add these redirect URLs (include the port you actually use locally):
    ```
    http://localhost:3000/more
    http://localhost:3003/more
    https://student-tracker-git-main-rence6.vercel.app/more
    ```
    Keep Email provider enabled. Sign-up may require the user to confirm their email before signing in.
+   The configured project's Site URL now points to the production app, so confirmation links without a matching per-request redirect return to Student Tracker instead of localhost.
 6. Restart the local dev server after editing `.env.local`. In Vercel -> Project -> Settings -> Environment Variables, add the same URL and publishable key for Production, Preview, and Development, then redeploy after the latest source is in the connected Git branch so the client bundle receives them. This workspace has already added these two public client variables to the `student-tracker` Vercel project.
 7. Open More -> Sync across devices. Create an account once, then sign in with that email and password on each device. Upload and restore are manual. Upload replaces the cloud snapshot; restore replaces local data only after confirmation. Local-only use and offline access continue to work.
 
@@ -175,9 +176,20 @@ This repository is already configured with a `.gitignore` rule for `.env.local`.
 7. **iOS rule:** push works only after the app is added to the Home Screen (iOS 16.4+) and the user allows notifications. The scheduler for due reminders is a separate P3-03 task.
 
 ### 8.3 Scheduler (free)
-1. Vercel's free plan only runs cron jobs once a day, so use **cron-job.org** (free).
-2. Create a job that calls your `/api/send-reminders` URL every 5 minutes, with the secret key in a header.
-3. Test by creating a task due in 10 minutes.
+The scheduled sender is `GET /api/cron/send-reminders`. It reads each private synced backup on the server, sends a daily “Your 3 things today” push at 7:00 AM in `STUDENT_TRACKER_TIME_ZONE` (defaults to `Asia/Manila`), and sends one push when an unfinished task is due within 15 minutes. The daily list can include due tasks, recurring classes, and exams/events. Devices must have notifications enabled and the user must have uploaded their planner data to Sync across devices.
+
+1. Apply [`supabase/push_delivery_log.sql`](supabase/push_delivery_log.sql) in Supabase SQL Editor. This private table prevents duplicate sends when the scheduler retries.
+2. In Vercel -> Project -> Settings -> Environment Variables, add `SUPABASE_SERVICE_ROLE_KEY` as a **Secret** for Production. Find the service-role/secret key in Supabase Project Settings -> API Keys. It is used only by the server route to read private backups and must never use a `NEXT_PUBLIC_` name or be added to client code. Add `CRON_SECRET` as a **Secret** too. Generate a random value locally, for example in PowerShell:
+   ```powershell
+   $bytes = New-Object byte[] 32
+   [Security.Cryptography.RandomNumberGenerator]::Fill($bytes)
+   [Convert]::ToBase64String($bytes)
+   ```
+   If you want a timezone other than Manila, set `STUDENT_TRACKER_TIME_ZONE` to a valid IANA zone such as `America/Los_Angeles`. Redeploy after adding environment variables.
+3. In cron-job.org, create a job for `https://student-tracker-git-main-rence6.vercel.app/api/cron/send-reminders`, schedule it every 5 minutes, and set the request header `Authorization` to `Bearer <the same CRON_SECRET value>`. Do not include the secret in the URL.
+4. Verify the endpoint by invoking the job once. A successful request returns JSON with `ok: true`. For end-to-end checks, enable push and upload a synced backup, then schedule a task within 15 minutes; check the next 7:00 AM local summary with at least one activity planned for that day. A task reminder and daily summary each send once per user/item/day; an expired browser subscription is removed automatically.
+
+Vercel Hobby cron only runs once per day, so the free external scheduler is needed for the 5-minute task reminder window. The app has not been configured with the service-role key or scheduler secret yet; add them only as server-side secrets.
 
 ### 8.4 Widget (optional)
 Use the free **Scriptable** app on iPhone to build a home screen widget that reads data from Supabase. This is an extra, not required.

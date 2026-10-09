@@ -106,25 +106,25 @@ export default function BackupManager() {
   }
 
   return (
-    <section aria-labelledby="backup-heading" className="mt-8 rounded-3xl border border-border bg-surface p-5 sm:p-7">
+    <section aria-labelledby="backup-heading" className="mt-8 min-w-0 w-full max-w-full rounded-3xl border border-border bg-surface p-5 sm:p-7">
       <p className="text-xs font-semibold uppercase tracking-[0.16em] text-accent">Keep your data safe</p>
       <h2 id="backup-heading" className="mt-1 text-xl font-semibold">Backup and restore</h2>
       <p className="mt-2 max-w-xl text-sm leading-6 text-muted">Save your subjects, classes, tasks, subtasks, exams, events, habits, routines, and focus sessions to a JSON file. Keep a copy somewhere safe in case your device clears its local data.</p>
 
-      <div className="mt-5 grid gap-4 sm:grid-cols-2">
-        <div className="rounded-2xl border border-border p-4">
+      <div className="mt-5 grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="min-w-0 rounded-2xl border border-border p-4">
           <h3 className="font-semibold">Export a backup</h3>
           <p className="mt-1 text-sm leading-6 text-muted">Download a complete copy of the data on this device.</p>
-          <button type="button" onClick={() => void exportBackup()} disabled={busy} className="mt-4 min-h-11 w-full rounded-xl bg-accent px-4 text-sm font-semibold text-accent-foreground transition-opacity hover:opacity-90 disabled:cursor-wait disabled:opacity-60">{busy ? "Working…" : "Download JSON backup"}</button>
+          <button type="button" onClick={() => void exportBackup()} disabled={busy} className="mt-4 min-h-11 w-full min-w-0 whitespace-normal break-words rounded-xl bg-accent px-3 py-2 text-sm font-semibold leading-snug text-accent-foreground transition-opacity hover:opacity-90 disabled:cursor-wait disabled:opacity-60 sm:px-4">{busy ? "Working…" : "Download JSON backup"}</button>
         </div>
 
-        <div className="rounded-2xl border border-border p-4">
+        <div className="min-w-0 rounded-2xl border border-border p-4">
           <h3 className="font-semibold">Import a backup</h3>
           <label htmlFor="backup-import-mode" className="mt-3 block text-sm font-medium">Import mode</label>
           <ChoicePicker id="backup-import-mode" value={mode} disabled={busy} options={[{ value: "merge", label: "Merge with this device", marker: "+", color: "#347FAE", description: "Keep current items and add backup data" }, { value: "replace", label: "Replace all device data", marker: "↻", color: "#D85880", description: "Use only the data in this backup" }]} onChange={(value) => setMode(value as BackupImportMode)} />
           <p className="mt-2 min-h-12 text-xs leading-5 text-muted">{mode === "merge" ? "Matching IDs are updated; other current items are kept." : "All current items are replaced by the backup after confirmation."}</p>
           <input ref={inputRef} type="file" accept=".json,application/json" onChange={(event) => void importBackup(event)} className="sr-only" />
-          <button type="button" onClick={() => inputRef.current?.click()} disabled={busy} className="mt-2 min-h-11 w-full rounded-xl border border-border px-4 text-sm font-semibold transition-colors hover:bg-background disabled:cursor-wait disabled:opacity-60">{busy ? "Working…" : "Choose backup file"}</button>
+          <button type="button" onClick={() => inputRef.current?.click()} disabled={busy} className="mt-2 min-h-11 w-full min-w-0 whitespace-normal break-words rounded-xl border border-border px-3 py-2 text-sm font-semibold leading-snug transition-colors hover:bg-background disabled:cursor-wait disabled:opacity-60 sm:px-4">{busy ? "Working…" : "Choose backup file"}</button>
         </div>
       </div>
 

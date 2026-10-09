@@ -1,5 +1,5 @@
 const CACHE_PREFIX = "student-tracker-";
-const CACHE_NAME = `${CACHE_PREFIX}v2`;
+const CACHE_NAME = `${CACHE_PREFIX}v3`;
 const PRECACHE_URLS = [
   "/",
   "/offline.html",
@@ -8,6 +8,7 @@ const PRECACHE_URLS = [
   "/icon-512.png",
   "/icon-maskable-512.png",
   "/apple-touch-icon.png",
+  "/student-tracker-logo.png",
 ];
 
 self.addEventListener("install", (event) => {

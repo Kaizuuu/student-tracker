@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import ThemeToggle from "@/components/ThemeToggle";
@@ -61,14 +62,14 @@ export default function AppShell({ children }: { children: ReactNode }) {
       <header className="sticky top-0 z-20 border-b border-border/70 bg-background/75 backdrop-blur-2xl supports-[backdrop-filter]:bg-background/60">
         <div className="mx-auto flex h-[4.25rem] w-full max-w-5xl items-center justify-between px-5 sm:px-8">
           <Link href="/" className="group flex min-h-11 items-center gap-3 rounded-xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent">
-            <span className="flex size-9 items-center justify-center rounded-[13px] bg-gradient-to-br from-accent to-[color-mix(in_srgb,var(--accent)_76%,black)] text-sm font-bold text-accent-foreground shadow-md shadow-accent/20 transition-transform group-hover:scale-105" aria-hidden="true">S</span>
+            <Image src="/student-tracker-logo.png" alt="" width={36} height={36} priority className="size-9 shrink-0 object-contain transition-transform group-hover:scale-105" aria-hidden="true" />
             <span className="text-[15px] font-semibold tracking-tight sm:text-base">Student Tracker</span>
           </Link>
           <ThemeToggle />
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-5xl flex-1 px-5 pb-32 pt-8 sm:px-8 sm:pb-36 sm:pt-12">
+      <main className="mx-auto min-w-0 w-full max-w-5xl flex-1 px-5 pb-32 pt-8 sm:px-8 sm:pb-36 sm:pt-12">
         {children}
       </main>
 
