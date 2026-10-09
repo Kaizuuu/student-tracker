@@ -73,6 +73,12 @@ function reminderOffset(value: number | null | undefined) {
   return value === 10 || value === 30 || value === 60 || value === 1440 ? value : DEFAULT_REMINDER_MINUTES;
 }
 
+function reminderOffsets(value: number | null | undefined) {
+  const offset = reminderOffset(value);
+  if (offset === null) return [];
+  return offset === 1440 ? [1440] : [1440, offset];
+}
+
 function reminderWindowIsOpen(startsAt: Date, offset: number | null, now: Date) {
   if (offset === null || !Number.isFinite(startsAt.getTime())) return false;
   const minutesUntilStart = (startsAt.getTime() - now.getTime()) / 60_000;
@@ -111,12 +117,12 @@ function remindersForBackup(records: BackupRecords, now: Date, dateKey: string):
   for (const task of records.tasks) {
     if (!task || typeof task.id !== "string" || typeof task.title !== "string" || task.completedAt || !task.dueAt) continue;
     const due = new Date(task.dueAt);
-    const offset = reminderOffset(task.reminderMinutesBefore);
-    if (reminderWindowIsOpen(due, offset, now)) {
+    for (const offset of reminderOffsets(task.reminderMinutesBefore)) {
+      if (!reminderWindowIsOpen(due, offset, now)) continue;
       reminders.push({
         key: `task:${task.id}:${task.dueAt}:before:${offset}`,
         title: "Task reminder",
-        body: `${task.title} is due in ${reminderLeadLabel(offset!)}.`,
+        body: `${task.title} is due in ${reminderLeadLabel(offset)}.`,
         url: "/tasks",
       });
     }
@@ -125,13 +131,13 @@ function remindersForBackup(records: BackupRecords, now: Date, dateKey: string):
   for (const entry of records.calendarEntries) {
     if (!entry || typeof entry.id !== "string" || typeof entry.title !== "string") continue;
     const startsAt = new Date(entry.startsAt);
-    const offset = reminderOffset(entry.reminderMinutesBefore);
-    if (reminderWindowIsOpen(startsAt, offset, now)) {
+    for (const offset of reminderOffsets(entry.reminderMinutesBefore)) {
+      if (!reminderWindowIsOpen(startsAt, offset, now)) continue;
       const kind = entry.kind === "exam" ? "Exam" : "Event";
       reminders.push({
         key: `${kind.toLowerCase()}:${entry.id}:${entry.startsAt}:before:${offset}`,
         title: `${kind} reminder`,
-        body: `${entry.title} starts in ${reminderLeadLabel(offset!)}.`,
+        body: `${entry.title} starts in ${reminderLeadLabel(offset)}.`,
         url: "/calendar",
       });
     }
@@ -140,16 +146,18 @@ function remindersForBackup(records: BackupRecords, now: Date, dateKey: string):
   for (const classItem of records.classes) {
     if (!classItem || typeof classItem.id !== "string" || !Number.isInteger(classItem.dayOfWeek) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(classItem.startTime)) continue;
     const startsAt = nextClassStart(classItem, now);
-    const offset = reminderOffset(classItem.reminderMinutesBefore);
-    if (!startsAt || !reminderWindowIsOpen(startsAt, offset, now)) continue;
+    if (!startsAt) continue;
     const subject = classItem.subjectId ? subjectNames.get(classItem.subjectId) : undefined;
     const classLabel = subject ? `${subject} class` : "Class";
-    reminders.push({
-      key: `class:${classItem.id}:${startsAt.toISOString()}:before:${offset}`,
-      title: "Class reminder",
-      body: `${classLabel} starts in ${reminderLeadLabel(offset!)}.`,
-      url: "/classes",
-    });
+    for (const offset of reminderOffsets(classItem.reminderMinutesBefore)) {
+      if (!reminderWindowIsOpen(startsAt, offset, now)) continue;
+      reminders.push({
+        key: `class:${classItem.id}:${startsAt.toISOString()}:before:${offset}`,
+        title: "Class reminder",
+        body: `${classLabel} starts in ${reminderLeadLabel(offset)}.`,
+        url: "/classes",
+      });
+    }
   }
 
   if (localHour(now, TIME_ZONE) === SUMMARY_HOUR) {

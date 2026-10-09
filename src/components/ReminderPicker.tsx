@@ -4,10 +4,10 @@ import ChoicePicker from "@/components/ChoicePicker";
 import type { ReminderMinutesBefore } from "@/types/records";
 
 const options = [
-  { value: "10", label: "10 minutes before", marker: "10", description: "A quick heads-up" },
-  { value: "30", label: "30 minutes before", marker: "30", description: "Time to get ready" },
-  { value: "60", label: "1 hour before", marker: "1h", description: "Plan ahead" },
-  { value: "1440", label: "1 day before", marker: "1d", description: "A reminder the day before" },
+  { value: "10", label: "1 day + 10 minutes before", marker: "10", description: "Remember the day before and get a quick heads-up" },
+  { value: "30", label: "1 day + 30 minutes before", marker: "30", description: "Remember the day before and have time to get ready" },
+  { value: "60", label: "1 day + 1 hour before", marker: "1h", description: "Remember the day before and plan ahead" },
+  { value: "1440", label: "1 day before only", marker: "1d", description: "Send one reminder the previous day" },
   { value: "none", label: "No reminder", marker: "×", description: "Turn off push for this item" },
 ];
 
