@@ -35,6 +35,7 @@ export default function PushNotificationsManager() {
   const [supported, setSupported] = useState(false);
   const [subscription, setSubscription] = useState<PushSubscription | null>(null);
   const [permission, setPermission] = useState<NotificationPermission | "unsupported">("default");
+  const [iosDevice, setIosDevice] = useState(false);
   const [iosInstallNeeded, setIosInstallNeeded] = useState(false);
   const [working, setWorking] = useState(false);
   const [feedback, setFeedback] = useState<Feedback | null>(null);
@@ -51,6 +52,7 @@ export default function PushNotificationsManager() {
   useEffect(() => {
     const canPush = "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
     setSupported(canPush);
+    setIosDevice(isIOS());
     setIosInstallNeeded(isIOS() && !isInstalled());
     if (!canPush) return;
     void refreshSubscription().catch(() => setFeedback({ type: "error", text: "Push notification status could not be checked." }));
@@ -176,15 +178,15 @@ export default function PushNotificationsManager() {
         <div className="min-w-0">
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-accent">Optional · device reminders</p>
           <h2 id="push-heading" className="mt-1 text-xl font-semibold">Push notifications</h2>
-          <p className="mt-2 max-w-xl text-sm leading-6 text-muted">While the planner is open, reminders can appear here from this device’s saved schedule. To receive browser notifications while it is closed, enable push notifications and upload your latest planner in Sync across devices after changes. A day-before alert is automatic, with an optional 10-minute, 30-minute, or 1-hour heads-up.</p>
+          <p className="mt-2 max-w-xl text-sm leading-6 text-muted">While the planner is open, reminders appear here from this device’s saved schedule. When it is closed, enabled push notifications deliver them as device alerts; upload your latest planner in Sync across devices after changes. On iPhone or iPad, use the Home Screen app from Safari on iOS/iPadOS 16.4 or later. A day-before alert is automatic, with an optional 10-minute, 30-minute, or 1-hour heads-up.</p>
         </div>
         <span className={`rounded-full px-3 py-1 text-xs font-semibold ${subscription ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : "bg-accent/10 text-accent"}`}>
           {subscription ? "Enabled" : supported ? "Not enabled" : "Unavailable"}
         </span>
       </div>
 
-      {iosInstallNeeded && <p className="mt-4 rounded-2xl border border-border bg-background px-4 py-3 text-sm leading-6 text-muted">On iPhone, first use Safari’s Share menu to add Student Tracker to your Home Screen, then open it from the new icon to enable push notifications.</p>}
-      {!supported && <p className="mt-4 rounded-2xl border border-border bg-background px-4 py-3 text-sm leading-6 text-muted">This browser does not support web push notifications.</p>}
+      {iosInstallNeeded && <p className="mt-4 rounded-2xl border border-border bg-background px-4 py-3 text-sm leading-6 text-muted">On iPhone or iPad, use Safari’s Share menu to add Student Tracker to your Home Screen (iOS/iPadOS 16.4 or later), then open it from the new icon before enabling push.</p>}
+      {!supported && <p className="mt-4 rounded-2xl border border-border bg-background px-4 py-3 text-sm leading-6 text-muted">{iosDevice ? "iPhone and iPad push requires iOS/iPadOS 16.4 or later and Student Tracker opened from its Home Screen icon." : "This browser does not support web push notifications."}</p>}
       {supported && !user && <p className="mt-4 rounded-2xl border border-border bg-background px-4 py-3 text-sm leading-6 text-muted">Sign in to your sync account to save this browser’s private push subscription. <Link href="/more#sync-heading" className="font-semibold text-accent underline decoration-accent/40 underline-offset-2">Open sync settings</Link>.</p>}
       {supported && permission === "denied" && <p className="mt-4 rounded-2xl border border-border bg-background px-4 py-3 text-sm leading-6 text-muted">Notifications are blocked by this browser. Allow them in the site settings before enabling reminders.</p>}
 
