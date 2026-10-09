@@ -129,41 +129,50 @@ Commands may change over time, so if one fails, check the official docs for that
 
 Only start this after Phases 1-2 are done.
 
-### 8.1 Supabase (cloud database + optional login)
-1. Go to supabase.com, sign in with GitHub, and create a **New project** (free plan).
-2. Copy the **Project URL** and **anon public key** from Project Settings -> API.
-3. Install the client:
+### 8.1 Supabase (optional cloud sync)
+1. Go to [supabase.com](https://supabase.com), sign in, and create a **New project** on the free plan, or select the existing free project you want to use.
+2. In Project Settings -> API Keys (or the project Connect dialog), copy the **Project URL** and a **publishable key**. A legacy `anon` key also works. Never put a `secret` or `service_role` key in the app; browser keys are safe only when Row Level Security is enabled and correctly configured.
+3. Copy `.env.example` to `.env.local` in the project root, then fill in the URL and publishable key. Keep `.env.local` out of Git; it is ignored by this repository:
    ```
-   npm install @supabase/supabase-js
+   NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
+   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
    ```
-4. Create `.env.local` in the project root:
+4. In Supabase -> SQL Editor, run [`supabase/user_backups.sql`](supabase/user_backups.sql). It creates the one-row-per-user JSON backup table and policies that restrict each signed-in user to their own data.
+5. In Authentication -> URL Configuration, set the Site URL to `http://localhost:3000` while developing and add these redirect URLs (include the port you actually use locally):
    ```
-   NEXT_PUBLIC_SUPABASE_URL=your-url
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+   http://localhost:3000/more
+   http://localhost:3003/more
+   https://student-tracker-git-main-rence6.vercel.app/more
    ```
-5. Add the same variables in Vercel: Project -> Settings -> Environment Variables.
-6. Create tables in the Supabase SQL editor for synced data and for `push_subscriptions`. Turn on **Row Level Security** and add policies so each user only sees their own rows.
-7. Make sure `.env.local` is in `.gitignore` (create-next-app does this by default).
+   Keep Email provider enabled. Sign-up may require the user to confirm their email before signing in.
+6. Restart the local dev server after editing `.env.local`. In Vercel -> Project -> Settings -> Environment Variables, add the same URL and publishable key for Production, Preview, and Development, then redeploy after the latest source is in the connected Git branch so the client bundle receives them. This workspace has already added these two public client variables to the `student-tracker` Vercel project.
+7. Open More -> Sync across devices. Create an account once, then sign in with that email and password on each device. Upload and restore are manual. Upload replaces the cloud snapshot; restore replaces local data only after confirmation. Local-only use and offline access continue to work.
+
+The app stores each synced dataset as a validated Student Tracker backup, so new record types remain compatible with the existing backup/restore format. The browser uses the Supabase publishable key and authenticated user session; database Row Level Security is what restricts access to the signed-in user.
+This repository is already configured with a `.gitignore` rule for `.env.local`. The connected Supabase project has email sign-up enabled and requires email confirmation by default. The local configuration uses the project's publishable key; never use a secret or `service_role` key in the browser app.
 
 ### 8.2 Push notifications
-1. Install:
+1. Install the server-side sender and types:
    ```
    npm install web-push
+   npm install --save-dev @types/web-push
    ```
-2. Generate keys once:
+2. Generate a VAPID key pair once:
    ```
    npx web-push generate-vapid-keys
    ```
-3. Save them as environment variables (locally and in Vercel):
+3. Save the public key and subject in `NEXT_PUBLIC_VAPID_PUBLIC_KEY` and `VAPID_SUBJECT`; save the private key in `VAPID_PRIVATE_KEY`. Keep the private key server-only and store it in ignored `.env.local` locally. Add the variables to Vercel for Production, Preview, and Development before deploying. In Vercel, store `VAPID_PRIVATE_KEY` as a Secret; the public key and subject can be Config variables:
    ```
    NEXT_PUBLIC_VAPID_PUBLIC_KEY=...
    VAPID_PRIVATE_KEY=...
-   VAPID_SUBJECT=mailto:you@example.com
+   VAPID_SUBJECT=https://your-app-domain.example
    ```
-4. In the app, add an "Enable notifications" button. It must be triggered by a **tap**, then call the browser's push subscription and save the result to Supabase.
-5. Add a `push` event handler to `public/sw.js` to show the notification.
-6. Create an API route (for example `src/app/api/send-reminders/route.ts`) that finds items due soon and sends pushes with `web-push`. Protect it with a secret key in the request header.
-7. **iOS rule:** push works only after the app is added to the Home Screen (iOS 16.4+) and the user allows notifications.
+   The values for the `student-tracker` Vercel project have been added for all three environments. A new deployment is required before they take effect.
+4. Run [`supabase/push_subscriptions.sql`](supabase/push_subscriptions.sql) in Supabase. It stores one browser subscription per endpoint and restricts access to its signed-in owner with RLS.
+   The push-subscription table and its owner-only RLS policies were applied successfully to the configured Supabase project on 2026-10-09.
+5. In More -> Push notifications, sign in to the private sync account and tap **Enable notifications**. The permission prompt must follow a user tap. Use **Send a test notification** to verify delivery; the authenticated endpoint sends to that user's saved browsers only.
+6. `public/sw.js` displays incoming push messages and opens the app when a notification is tapped. The subscription interface is in `src/components/PushNotificationsManager.tsx`; the authenticated test sender is `src/app/api/push/test/route.ts`.
+7. **iOS rule:** push works only after the app is added to the Home Screen (iOS 16.4+) and the user allows notifications. The scheduler for due reminders is a separate P3-03 task.
 
 ### 8.3 Scheduler (free)
 1. Vercel's free plan only runs cron jobs once a day, so use **cron-job.org** (free).

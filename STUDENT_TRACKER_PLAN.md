@@ -29,7 +29,7 @@ A free, mobile-first PWA that works like a real tracker. It reminds the user of 
 ---
 
 ## Next up
-**P3-01: Supabase project setup and optional sync across devices**
+**P3-02: Web push notifications**
 
 ---
 
@@ -60,7 +60,8 @@ A free, mobile-first PWA that works like a real tracker. It reminds the user of 
 - [x] P2-08: Notes per subject. 2026-10-07. Subjects now store and display room, teacher, notes, and up to 15 validated web links; older records remain compatible and backup import/export preserves the fields in `src/components/SubjectsManager.tsx`, `src/types/records.ts`, and `src/lib/backup.ts`; production build passed.
 - [x] P2-09: Focus timer. 2026-10-07. Added persistent 25/5 and 50/10 Pomodoro timers linked to tasks, focus-session logging and today/all-time totals by subject, plus IndexedDB v4 and backward-compatible backup v4 support in `src/components/FocusTimer.tsx`, `src/app/focus/page.tsx`, `src/app/more/page.tsx`, `src/lib/db.ts`, `src/lib/backup.ts`, and `src/types/records.ts`; production build passed.
 - [x] P2-10: Habits and routines on Today. 2026-10-08. Added a compact Today rhythm card with daily habit check-ins, forgiving streaks, full/small versions, morning/night routine switching, progress, and direct IndexedDB completion updates in `src/components/TodayRhythm.tsx` and `src/components/TodayDashboard.tsx`; production build passed.
-- [x] P3-07: Import classes from a schedule screenshot. 2026-10-08. Added in-browser OCR, editable day/time/subject suggestions, existing-subject matching, new-subject creation, duplicate warnings, and a confirm-before-save flow in `src/components/ScheduleImageImport.tsx` and `src/components/ClassesManager.tsx`; production build passed.
+- [x] P3-01: Supabase project setup and optional sync across devices. 2026-10-09. Configured the existing free project, private `user_backups` table with per-user RLS, email auth and redirects, ignored local environment values, and Vercel public client variables; production build passed. Sign-up confirmation and manual upload/restore still need a user account walkthrough.
+- [x] P3-07: Import classes from a schedule screenshot. 2026-10-08; mobile review refinement 2026-10-09. Added in-browser OCR, editable day/time/subject suggestions, existing-subject matching, new-subject creation, duplicate warnings, weekday-grouped selection, unassigned-day handling, and a confirm-before-save flow in `src/components/ScheduleImageImport.tsx` and `src/components/ClassesManager.tsx`; production build passed.
 - [x] P3-08: Premium subject, option, date, time, and text-entry controls. 2026-10-08. Replaced native dropdowns and date fields with shared themed pickers across classes, tasks, calendar entries, focus setup, backup import, and quick capture; unified input/textarea surfaces, placeholder contrast, and focus styling in `src/components/ChoicePicker.tsx`, `src/components/DatePicker.tsx`, `src/components/DateTimePicker.tsx`, `src/components/TimePicker.tsx`, and `src/app/globals.css`; production build passed.
 
 ---
@@ -79,8 +80,8 @@ A free, mobile-first PWA that works like a real tracker. It reminds the user of 
 - [x] P2-09: Focus timer (Pomodoro) linked to a task, with study time logged per subject
 
 ### Phase 3: Extras
-- [ ] P3-01: Supabase project setup (free tier) and optional sync across devices
 - [ ] P3-02: Web push notifications (iOS requires Home Screen install, iOS 16.4+)
+  - Built the tap-to-enable flow, account-private subscription storage, service-worker push display/click handling, and authenticated test-push route. Applied `supabase/push_subscriptions.sql` to the existing Supabase project on 2026-10-09; the table has per-user RLS policies. VAPID settings are saved in the `student-tracker` Vercel project for Production, Preview, and Development; `VAPID_PRIVATE_KEY` is stored as a Secret. Remaining: deploy the updated source and verify on a supported browser/device.
 - [ ] P3-03: Scheduler for push (free cron service) and daily summary ("3 things today")
 - [ ] P3-04: Themes and light/dark customization
 - [ ] P3-05: Mood/energy check-in (one tap per day) with weekly chart
@@ -97,7 +98,10 @@ A free, mobile-first PWA that works like a real tracker. It reminds the user of 
 - P1-16 calendar layout follows the user's reference: keep the existing theme, use a horizontal day carousel for Weekly, a focused agenda for Daily, and a denser month grid for Monthly. Keep type and task-priority filters available.
 - 2026-10-08 visual refresh: applied a unified, iOS-inspired premium visual system across the app with system typography, refined light/dark surfaces, softer card depth, accessible motion/focus states, floating glass navigation, and a Today layout with a date strip and pastel-blue agenda panel inspired by the user's reference. The app theme is now pastel blue and white, including PWA metadata and icons. Explicit light/dark utilities follow the selected app theme, and light-mode muted text uses darker blue-gray for legibility.
 - P3-07 was added and completed ahead of P3-01 at the user's request. Screenshot OCR is performed in the browser; the first use downloads Tesseract OCR assets, the image itself is not uploaded, and the user reviews all proposed classes before they are saved locally.
-- P3-08 was added and completed ahead of P3-01 at the user's request; P3-01 remains next.
+- P3-07 mobile review refinement: suggestions are grouped into weekday tabs, each row can be selected or deselected, unclear days stay unassigned instead of defaulting to Monday, and long OCR text/details stay within the mobile layout. Review and correct the OCR day grouping against the user's timetable before importing.
+- P3-08 was added and completed ahead of P3-01 at the user's request.
+- P3-01 setup is complete. The existing Supabase project is connected for local builds and its private backup table is protected by per-user RLS. Its publishable key is used locally and saved in Vercel as a public client config value; no secret/service-role key is used in browser code. The current Vercel deployment predates this workspace's changes, so the account-based sync walkthrough is deferred until the updated source is deployed.
+- P3-02 uses the existing Supabase account to keep browser push endpoints private per user. The VAPID public key and subject are Vercel Config variables; the private key is a server-only Vercel Secret. The user authorized saving all three in the `student-tracker` Vercel project for Production, Preview, and Development. Vercel requires a new deployment before these values take effect. The push subscription table and owner-only RLS policies were applied successfully in Supabase on 2026-10-09. End-to-end push delivery still needs a deployment and supported-device verification.
 - Small-screen layouts reflow with the device width; long labels wrap at word boundaries, and compact controls avoid cutting words off on phone screens.
 - Native iOS app was ruled out: it needs the $99/year Apple Developer account, or weekly re-signing for free sideloading.
 - iOS PWAs cannot make true home screen widgets. Calendar export puts events in the built-in iOS Calendar widget.

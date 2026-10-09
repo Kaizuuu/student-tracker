@@ -1,5 +1,7 @@
 import Link from "next/link";
 import BackupManager from "@/components/BackupManager";
+import PushNotificationsManager from "@/components/PushNotificationsManager";
+import SyncManager from "@/components/SyncManager";
 
 export default function MorePage() {
   return (
@@ -92,6 +94,8 @@ export default function MorePage() {
         <span className="text-xl text-muted" aria-hidden="true">›</span>
       </Link>
 
+      <SyncManager />
+      <PushNotificationsManager />
       <BackupManager />
     </section>
   );

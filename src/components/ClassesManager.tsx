@@ -198,7 +198,7 @@ export default function ClassesManager() {
   }
 
   async function handleImportSave(
-    drafts: Array<{ subjectText: string; subjectId: string; dayOfWeek: number; startTime: string; endTime: string; room: string; teacher: string }>,
+    drafts: Array<{ subjectText: string; subjectId: string; dayOfWeek: number | null; startTime: string; endTime: string; room: string; teacher: string }>,
     newSubjectNames: Set<string>,
   ) {
     const subjectByName = new Map(subjects.map((subject) => [subject.name.trim().toLocaleLowerCase(), subject.id]));
@@ -218,6 +218,7 @@ export default function ClassesManager() {
     }
 
     for (const draft of drafts) {
+      if (draft.dayOfWeek === null) continue;
       const subjectId = draft.subjectId || subjectByName.get(draft.subjectText.trim().toLocaleLowerCase());
       if (!subjectId) continue;
       await addRecord("classes", {
@@ -309,9 +310,9 @@ export default function ClassesManager() {
               <div>
                 <p className="text-sm text-muted">Check the weekly schedule before saving.</p>
                 <dl className="mt-4 divide-y divide-border rounded-2xl border border-border bg-background px-4">
-                  <div className="py-3"><dt className="text-xs font-medium text-muted">Subject</dt><dd className="mt-1 break-words text-sm font-semibold">{subjects.find((subject) => subject.id === form.subjectId)?.name ?? "No subject"}</dd></div>
+                  <div className="py-3"><dt className="text-xs font-medium text-muted">Subject</dt><dd className="mt-1 truncate text-sm font-semibold">{subjects.find((subject) => subject.id === form.subjectId)?.name ?? "No subject"}</dd></div>
                   <div className="py-3"><dt className="text-xs font-medium text-muted">Repeats</dt><dd className="mt-1 text-sm">{WEEKDAYS.find((day) => day.value === form.dayOfWeek)?.label ?? "Monday"}, {formatTime(form.startTime)}–{formatTime(form.endTime)}</dd></div>
-                  {(form.room.trim() || form.teacher.trim()) && <div className="py-3"><dt className="text-xs font-medium text-muted">More details</dt><dd className="mt-1 break-words text-sm">{[form.room.trim(), form.teacher.trim()].filter(Boolean).join(" · ")}</dd></div>}
+                  {(form.room.trim() || form.teacher.trim()) && <div className="py-3"><dt className="text-xs font-medium text-muted">More details</dt><dd className="mt-1 truncate text-sm">{[form.room.trim(), form.teacher.trim()].filter(Boolean).join(" · ")}</dd></div>}
                 </dl>
               </div>
             )}
@@ -371,9 +372,9 @@ export default function ClassesManager() {
                     </div>
                     <div className="w-1 shrink-0 rounded-full" style={{ backgroundColor: subject?.color ?? "var(--border)" }} aria-hidden="true" />
                     <div className="min-w-0 flex-1 basis-32">
-                      <h3 className="break-words font-semibold">{subjectName}</h3>
+                      <h3 className="truncate font-semibold">{subjectName}</h3>
                       {(classItem.room || classItem.teacher) && (
-                        <p className="mt-1.5 whitespace-normal break-words text-sm text-muted">{[classItem.room, classItem.teacher].filter(Boolean).join(" · ")}</p>
+                        <p className="mt-1.5 truncate text-sm text-muted">{[classItem.room, classItem.teacher].filter(Boolean).join(" · ")}</p>
                       )}
                     </div>
                     <div className="flex basis-full justify-end gap-1 sm:basis-auto sm:shrink-0 sm:flex-col sm:justify-center sm:gap-0.5 lg:flex-row lg:items-center lg:gap-1">

@@ -6,31 +6,34 @@ import TimePicker from "@/components/TimePicker";
 import type { ClassRecord, SubjectRecord } from "@/types/records";
 
 const DAYS = [
-  { value: 1, label: "Monday", aliases: ["monday", "mon"] },
-  { value: 2, label: "Tuesday", aliases: ["tuesday", "tue", "tues"] },
-  { value: 3, label: "Wednesday", aliases: ["wednesday", "wed"] },
-  { value: 4, label: "Thursday", aliases: ["thursday", "thu", "thur", "thurs"] },
-  { value: 5, label: "Friday", aliases: ["friday", "fri"] },
-  { value: 6, label: "Saturday", aliases: ["saturday", "sat"] },
-  { value: 0, label: "Sunday", aliases: ["sunday", "sun"] },
+  { value: 1, label: "Monday", short: "Mon", aliases: ["monday", "mon"] },
+  { value: 2, label: "Tuesday", short: "Tue", aliases: ["tuesday", "tue", "tues"] },
+  { value: 3, label: "Wednesday", short: "Wed", aliases: ["wednesday", "wed"] },
+  { value: 4, label: "Thursday", short: "Thu", aliases: ["thursday", "thu", "thur", "thurs"] },
+  { value: 5, label: "Friday", short: "Fri", aliases: ["friday", "fri"] },
+  { value: 6, label: "Saturday", short: "Sat", aliases: ["saturday", "sat"] },
+  { value: 0, label: "Sunday", short: "Sun", aliases: ["sunday", "sun"] },
 ] as const;
-const DAY_OPTIONS = DAYS.map((day) => ({ value: String(day.value), label: day.label, marker: day.label.slice(0, 1) }));
+const DAY_OPTIONS = [{ value: "unassigned", label: "Needs a day", marker: "?", description: "Assign this before importing" }, ...DAYS.map((day) => ({ value: String(day.value), label: day.label, marker: day.short.slice(0, 1) }))];
 
 type DraftClass = {
   id: string;
   subjectText: string;
   subjectId: string;
-  dayOfWeek: number;
+  dayOfWeek: number | null;
   startTime: string;
   endTime: string;
   room: string;
   teacher: string;
   needsReview: boolean;
+  selected: boolean;
 };
 
 type OCRLine = {
   text: string;
   bbox?: { x0: number; x1: number; y0: number; y1: number };
+  words?: Array<{ text: string; bbox: { x0: number; x1: number; y0: number; y1: number } }>;
+  assignedDayOfWeek?: number;
 };
 
 function dayInText(text: string) {
@@ -78,22 +81,67 @@ function matchSubject(text: string, subjects: SubjectRecord[]) {
   return subjects.find((subject) => normalizeSubject(subject.name) === key);
 }
 
+function classTextBounds(line: OCRLine) {
+  const classWords = line.words?.filter((word) => /[\p{L}]{2}/u.test(word.text) && !dayInText(word.text) && !/^(?:am|pm)$/i.test(word.text));
+  if (!classWords?.length) return line.bbox;
+  return {
+    x0: Math.min(...classWords.map((word) => word.bbox.x0)),
+    x1: Math.max(...classWords.map((word) => word.bbox.x1)),
+    y0: Math.min(...classWords.map((word) => word.bbox.y0)),
+    y1: Math.max(...classWords.map((word) => word.bbox.y1)),
+  };
+}
+
 function buildDrafts(lines: OCRLine[], subjects: SubjectRecord[]): DraftClass[] {
   const normalizedLines = lines
     .map((line) => ({ ...line, text: line.text.replace(/\s+/g, " ").trim() }))
     .filter((line) => line.text && /[\p{L}]{2}/u.test(line.text));
 
   const dayHeaders = normalizedLines.flatMap((line) => {
+    const wordHeaders = line.words?.flatMap((word) => {
+      const day = dayInText(word.text);
+      return day ? [{ dayOfWeek: day.value, x: (word.bbox.x0 + word.bbox.x1) / 2, y: (word.bbox.y0 + word.bbox.y1) / 2 }] : [];
+    }) ?? [];
+    if (wordHeaders.length) return wordHeaders;
     const day = dayInText(line.text);
-    return day && line.bbox ? [{ dayOfWeek: day.value, x: (line.bbox.x0 + line.bbox.x1) / 2, y: line.bbox.y1 }] : [];
+    return day && line.bbox ? [{ dayOfWeek: day.value, x: (line.bbox.x0 + line.bbox.x1) / 2, y: (line.bbox.y0 + line.bbox.y1) / 2 }] : [];
   });
   const timeRows = normalizedLines.flatMap((line) => {
     const range = timeRangeInText(line.text);
     return range && line.bbox ? [{ ...range, y: (line.bbox.y0 + line.bbox.y1) / 2 }] : [];
   });
+  const headerXSpan = dayHeaders.length > 1 ? Math.max(...dayHeaders.map((header) => header.x)) - Math.min(...dayHeaders.map((header) => header.x)) : 0;
+  const headerYSpan = dayHeaders.length > 1 ? Math.max(...dayHeaders.map((header) => header.y)) - Math.min(...dayHeaders.map((header) => header.y)) : 0;
+  const daysAreRows = dayHeaders.length > 1 && headerYSpan > headerXSpan * 0.55;
+
+  const candidateLines = !daysAreRows && dayHeaders.length > 1
+    ? normalizedLines.flatMap((line) => {
+      if (!line.words?.length) return [line];
+      const groups = new Map<number, typeof line.words>();
+      for (const word of line.words) {
+        if (dayInText(word.text)) continue;
+        const x = (word.bbox.x0 + word.bbox.x1) / 2;
+        const nearestDay = dayHeaders.reduce((closest, header) => Math.abs(header.x - x) < Math.abs(closest.x - x) ? header : closest);
+        const group = groups.get(nearestDay.dayOfWeek) ?? [];
+        group.push(word);
+        groups.set(nearestDay.dayOfWeek, group);
+      }
+      const splitLines = Array.from(groups, ([assignedDayOfWeek, words]) => {
+        const bbox = {
+          x0: Math.min(...words.map((word) => word.bbox.x0)),
+          x1: Math.max(...words.map((word) => word.bbox.x1)),
+          y0: Math.min(...words.map((word) => word.bbox.y0)),
+          y1: Math.max(...words.map((word) => word.bbox.y1)),
+        };
+        return { text: words.map((word) => word.text).join(" "), words, bbox, assignedDayOfWeek };
+      }).filter((splitLine) => /[\p{L}]{2}/u.test(splitLine.text));
+      return splitLines.length ? splitLines : [];
+    })
+    : normalizedLines;
 
   const candidates: DraftClass[] = [];
-  for (const line of normalizedLines) {
+  for (const line of candidateLines) {
+    const bounds = classTextBounds(line);
     const range = timeRangeInText(line.text);
     const foundDay = dayInText(line.text);
     const stripped = line.text
@@ -107,14 +155,20 @@ function buildDrafts(lines: OCRLine[], subjects: SubjectRecord[]): DraftClass[] 
     // Skip labels, legends, and common timetable headings.
     if (/^(schedule|timetable|class schedule|subject|subjects|time|room|teacher|break|lunch|recess)$/i.test(stripped)) continue;
 
-    let dayOfWeek = foundDay?.value;
+    let dayOfWeek = line.assignedDayOfWeek ?? foundDay?.value;
     let inferredRange = range;
-    if (line.bbox && dayHeaders.length && !dayOfWeek) {
-      const x = (line.bbox.x0 + line.bbox.x1) / 2;
-      dayOfWeek = dayHeaders.reduce((closest, header) => Math.abs(header.x - x) < Math.abs(closest.x - x) ? header : closest).dayOfWeek;
+    if (bounds && dayHeaders.length && dayOfWeek === undefined) {
+      const x = (bounds.x0 + bounds.x1) / 2;
+      const y = (bounds.y0 + bounds.y1) / 2;
+      if (daysAreRows) {
+        const precedingHeaders = dayHeaders.filter((header) => header.y <= y);
+        if (precedingHeaders.length) dayOfWeek = precedingHeaders.reduce((latest, header) => header.y > latest.y ? header : latest).dayOfWeek;
+      } else {
+        dayOfWeek = dayHeaders.reduce((closest, header) => Math.abs(header.x - x) < Math.abs(closest.x - x) ? header : closest).dayOfWeek;
+      }
     }
-    if (line.bbox && timeRows.length && !inferredRange) {
-      const y = (line.bbox.y0 + line.bbox.y1) / 2;
+    if (bounds && timeRows.length && !inferredRange) {
+      const y = (bounds.y0 + bounds.y1) / 2;
       const priorRows = timeRows.filter((row) => row.y <= y + 8);
       const nearest = (priorRows.length ? priorRows : timeRows).reduce((closest, row) => Math.abs(row.y - y) < Math.abs(closest.y - y) ? row : closest);
       inferredRange = { startTime: nearest.startTime, endTime: nearest.endTime };
@@ -128,12 +182,13 @@ function buildDrafts(lines: OCRLine[], subjects: SubjectRecord[]): DraftClass[] 
       id: crypto.randomUUID(),
       subjectText: stripped.slice(0, 100),
       subjectId: subject?.id ?? "",
-      dayOfWeek: dayOfWeek ?? 1,
+      dayOfWeek: dayOfWeek ?? null,
       startTime: inferredRange?.startTime ?? "09:00",
       endTime: inferredRange?.endTime ?? "10:00",
       room: "",
       teacher: "",
-      needsReview: !dayOfWeek || !inferredRange || !subject,
+      needsReview: dayOfWeek === undefined || !inferredRange || !subject,
+      selected: true,
     });
   }
   return candidates.slice(0, 40);
@@ -159,9 +214,12 @@ export default function ScheduleImageImport({ subjects, existingClasses, onClose
   const [saving, setSaving] = useState(false);
   const [recognizing, setRecognizing] = useState(false);
   const [showRaw, setShowRaw] = useState(false);
+  const [activeDay, setActiveDay] = useState("1");
+  const [editingId, setEditingId] = useState<string | null>(null);
 
-  const newSubjectNames = useMemo(() => new Set(drafts.filter((draft) => !draft.subjectId).map((draft) => draft.subjectText.trim()).filter(Boolean)), [drafts]);
-  const saveableCount = drafts.filter((draft) => draft.subjectText.trim() && draft.startTime < draft.endTime).length;
+  const newSubjectNames = useMemo(() => new Set(drafts.filter((draft) => draft.selected && draft.dayOfWeek !== null && draft.subjectText.trim() && draft.startTime < draft.endTime && !draft.subjectId).map((draft) => draft.subjectText.trim())), [drafts]);
+  const saveableCount = drafts.filter((draft) => draft.selected && draft.subjectText.trim() && draft.dayOfWeek !== null && draft.startTime < draft.endTime).length;
+  const activeDayDrafts = drafts.filter((draft) => (draft.dayOfWeek === null ? "unassigned" : String(draft.dayOfWeek)) === activeDay);
 
   useEffect(() => () => {
     if (previewUrl) URL.revokeObjectURL(previewUrl);
@@ -173,7 +231,7 @@ export default function ScheduleImageImport({ subjects, existingClasses, onClose
       const next = { ...draft, ...patch };
       const matched = matchSubject(next.subjectText, subjects);
       if (patch.subjectId === undefined && patch.subjectText !== undefined) next.subjectId = matched?.id ?? "";
-      next.needsReview = !next.subjectId || next.startTime >= next.endTime;
+      next.needsReview = next.dayOfWeek === null || !next.subjectText.trim() || next.startTime >= next.endTime;
       return next;
     }));
   }
@@ -202,6 +260,8 @@ export default function ScheduleImageImport({ subjects, existingClasses, onClose
           setError("No class rows were detected. You can turn the recognized text into editable drafts and fill in the missing details.");
         } else {
           setDrafts(parsed);
+          setActiveDay(String(parsed.find((draft) => draft.dayOfWeek !== null)?.dayOfWeek ?? "unassigned"));
+          setEditingId(null);
           setStatus(`Found ${parsed.length} possible ${parsed.length === 1 ? "class" : "classes"}. Review each one before importing.`);
         }
       } finally {
@@ -220,7 +280,7 @@ export default function ScheduleImageImport({ subjects, existingClasses, onClose
     setSaving(true);
     setError("");
     try {
-      await onSave(drafts.filter((draft) => draft.subjectText.trim() && draft.startTime < draft.endTime), newSubjectNames);
+      await onSave(drafts.filter((draft) => draft.selected && draft.subjectText.trim() && draft.dayOfWeek !== null && draft.startTime < draft.endTime), newSubjectNames);
     } catch {
       setError("The schedule could not be saved. Your review is still here; try again.");
     } finally {
@@ -236,6 +296,10 @@ export default function ScheduleImageImport({ subjects, existingClasses, onClose
       return;
     }
     setDrafts(parsed);
+    // Default to the first detected day so tabs stay synced with the content.
+    const firstDayDraft = parsed.find((draft) => draft.dayOfWeek !== null);
+    setActiveDay(firstDayDraft ? String(firstDayDraft.dayOfWeek) : "unassigned");
+    setEditingId(null);
     setError("");
     setStatus(`Created ${parsed.length} editable ${parsed.length === 1 ? "draft" : "drafts"}. Check the day and time for each.`);
   }
@@ -273,7 +337,7 @@ export default function ScheduleImageImport({ subjects, existingClasses, onClose
         <div className="flex flex-wrap items-center gap-3">
           <input ref={inputRef} type="file" accept="image/*" className="sr-only" onChange={(event) => selectImage(event.target.files?.[0])} />
           <button type="button" onClick={() => inputRef.current?.click()} className="min-h-11 rounded-xl border border-border px-4 text-sm font-semibold hover:bg-background focus-visible:outline-2 focus-visible:outline-accent">{image ? "Choose another image" : "Choose screenshot"}</button>
-          {image && <span className="max-w-full break-all text-xs text-muted">{image.name}</span>}
+          {image && <span className="max-w-full truncate text-xs text-muted">{image.name}</span>}
           {image && <button type="button" disabled={recognizing} onClick={() => void recognize()} className="min-h-11 rounded-xl bg-accent px-4 text-sm font-semibold text-accent-foreground hover:opacity-90 disabled:cursor-wait disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-accent">{recognizing ? "Reading…" : drafts.length ? "Read again" : "Read schedule"}</button>}
         </div>
         {previewUrl && <img src={previewUrl} alt="Selected timetable screenshot preview" className="max-h-44 w-full rounded-2xl border border-border bg-background object-contain p-2" />}
@@ -281,34 +345,49 @@ export default function ScheduleImageImport({ subjects, existingClasses, onClose
 
       {status && <div className="mt-4" role="status"><p className="text-sm text-muted">{status}</p>{progress > 0 && progress < 100 && <div className="mt-2 h-2 overflow-hidden rounded-full bg-background"><div className="h-full rounded-full bg-accent transition-[width]" style={{ width: `${progress}%` }} /></div>}</div>}
       {error && <p role="alert" className="mt-4 rounded-xl border border-red-500/30 bg-red-500/5 px-4 py-3 text-sm text-red-700 dark:text-red-300">{error}</p>}
-      {rawText && !drafts.length && <div className="mt-4"><label htmlFor="schedule-ocr-text" className="text-sm font-medium">Recognized text <span className="font-normal text-muted">(edit if needed; one class per line)</span></label><textarea id="schedule-ocr-text" rows={5} value={editableText} onChange={(event) => setEditableText(event.target.value)} className="mt-2 w-full rounded-xl border border-border bg-background p-3 text-sm text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/20" /><button type="button" onClick={createDraftsFromText} className="mt-2 min-h-10 rounded-xl border border-border px-4 text-sm font-semibold hover:bg-background focus-visible:outline-2 focus-visible:outline-accent">Create editable drafts</button></div>}
+      {rawText && !drafts.length && <div className="mt-4 min-w-0"><label htmlFor="schedule-ocr-text" className="block text-sm font-medium">Recognized text <span className="font-normal text-muted">(edit if needed; one class per line)</span></label><textarea id="schedule-ocr-text" rows={5} value={editableText} onChange={(event) => setEditableText(event.target.value)} className="mt-2 min-h-0 min-w-0 w-full rounded-xl border border-border bg-background p-3 text-sm text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 break-words" /><button type="button" onClick={createDraftsFromText} className="mt-2 min-h-10 rounded-xl border border-border px-4 text-sm font-semibold hover:bg-background focus-visible:outline-2 focus-visible:outline-accent">Create editable drafts</button></div>}
 
       {drafts.length > 0 && <>
-        <div className="mt-6 flex flex-wrap items-end justify-between gap-3">
-          <div><h3 className="font-semibold">Review detected classes</h3><p className="mt-1 text-sm text-muted">{existingClasses.length ? "Existing entries are marked so you can avoid duplicates." : "Check the subject, day, and times before importing."}</p></div>
-          <p className="text-xs text-muted">{drafts.filter((draft) => draft.needsReview).length} need review</p>
+        <div className="mt-6 flex min-w-0 flex-wrap items-end justify-between gap-3">
+          <div className="min-w-0"><h3 className="font-semibold">Review by weekday</h3><p className="mt-1 max-w-full text-sm leading-5 text-muted">Open each day, check the classes you want, and edit details only when needed.</p></div>
+          <p className="shrink-0 text-xs text-muted">{drafts.filter((draft) => draft.needsReview).length} need a check</p>
         </div>
-        <div className="mt-3 space-y-3">
-          {drafts.map((draft) => {
-            const duplicate = existingClasses.some((item) => item.subjectId === draft.subjectId && item.dayOfWeek === draft.dayOfWeek && item.startTime === draft.startTime);
-            return <div key={draft.id} className="rounded-2xl border border-border bg-background p-4">
-              <div className="mb-3 flex flex-wrap items-center justify-between gap-2"><span className="text-xs font-medium text-muted">{draft.needsReview ? "Check detected details" : "Ready to import"}</span><button type="button" onClick={() => setDrafts((current) => current.filter((item) => item.id !== draft.id))} className="min-h-9 rounded-lg px-2 text-xs text-muted hover:bg-red-500/10 hover:text-red-700 focus-visible:outline-2 focus-visible:outline-red-500 dark:hover:text-red-300">Remove</button></div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <label className="text-xs font-medium text-muted">Subject name<input value={draft.subjectText} maxLength={100} onChange={(event) => updateDraft(draft.id, { subjectText: event.target.value })} className="mt-1 min-h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/20" /></label>
-                <div><label htmlFor={`import-subject-${draft.id}`} className="block text-xs font-medium text-muted">Link to subject</label><ChoicePicker id={`import-subject-${draft.id}`} value={draft.subjectId || "__new__"} options={[{ value: "__new__", label: `Create “${draft.subjectText || "New subject"}”`, marker: "+", description: "Add this to your subjects" }, ...subjects.map((subject) => ({ value: subject.id, label: subject.name, description: [subject.room, subject.teacher].filter(Boolean).join(" · "), color: subject.color }))]} onChange={(value) => updateDraft(draft.id, { subjectId: value === "__new__" ? "" : value })} /></div>
-                <div><label htmlFor={`import-day-${draft.id}`} className="block text-xs font-medium text-muted">Day</label><ChoicePicker id={`import-day-${draft.id}`} value={String(draft.dayOfWeek)} options={DAY_OPTIONS} onChange={(value) => updateDraft(draft.id, { dayOfWeek: Number(value) })} /></div>
-                <div className="grid grid-cols-2 gap-2"><div><label htmlFor={`import-start-${draft.id}`} className="block text-xs font-medium text-muted">Starts</label><TimePicker id={`import-start-${draft.id}`} value={draft.startTime} onChange={(startTime) => updateDraft(draft.id, { startTime })} /></div><div><label htmlFor={`import-end-${draft.id}`} className="block text-xs font-medium text-muted">Ends</label><TimePicker id={`import-end-${draft.id}`} value={draft.endTime} onChange={(endTime) => updateDraft(draft.id, { endTime })} /></div></div>
-                <label className="text-xs font-medium text-muted">Room (optional)<input value={draft.room} maxLength={60} onChange={(event) => updateDraft(draft.id, { room: event.target.value })} className="mt-1 min-h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/20" /></label>
-                <label className="text-xs font-medium text-muted">Teacher (optional)<input value={draft.teacher} maxLength={80} onChange={(event) => updateDraft(draft.id, { teacher: event.target.value })} className="mt-1 min-h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/20" /></label>
-              </div>
-              {duplicate && <p className="mt-2 text-xs font-medium text-amber-700 dark:text-amber-300">This looks like an existing class at the same time.</p>}
-            </div>;
+        <div role="tablist" aria-label="Schedule weekdays" className="mt-4 flex min-w-0 gap-2 overflow-x-auto overscroll-x-contain pb-2">
+          {DAYS.map((day) => {
+            const value = String(day.value);
+            const count = drafts.filter((draft) => draft.dayOfWeek === day.value).length;
+            const active = activeDay === value;
+            return <button key={value} type="button" role="tab" aria-selected={active} onClick={() => { setActiveDay(value); setEditingId(null); }} className={`flex min-h-16 min-w-[4.5rem] shrink-0 flex-col items-center justify-center gap-1 rounded-2xl border px-3 transition-colors focus-visible:outline-2 focus-visible:outline-accent ${active ? "border-accent bg-accent text-accent-foreground shadow-sm" : "border-border bg-background text-muted hover:border-accent/40 hover:bg-surface"}`}><span className="text-xs font-semibold">{day.short}</span><span className={`text-[10px] ${active ? "text-accent-foreground/80" : "text-muted"}`}>{count} {count === 1 ? "class" : "classes"}</span></button>;
           })}
+          {drafts.some((draft) => draft.dayOfWeek === null) && <button type="button" role="tab" aria-selected={activeDay === "unassigned"} onClick={() => { setActiveDay("unassigned"); setEditingId(null); }} className={`flex min-h-16 min-w-[5.5rem] shrink-0 flex-col items-center justify-center gap-1 rounded-2xl border px-3 focus-visible:outline-2 focus-visible:outline-accent ${activeDay === "unassigned" ? "border-amber-500 bg-amber-500/10 text-amber-800 dark:text-amber-200" : "border-border bg-background text-muted hover:bg-surface"}`}><span className="text-xs font-semibold">Needs day</span><span className="text-[10px]">{drafts.filter((draft) => draft.dayOfWeek === null).length} to assign</span></button>}
         </div>
+        <section role="tabpanel" className="mt-2 min-w-0 rounded-2xl border border-border bg-background p-3 sm:p-4">
+          <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 border-b border-border pb-3"><div className="min-w-0"><h4 className="font-semibold">{activeDay === "unassigned" ? "Needs a day" : DAYS.find((day) => String(day.value) === activeDay)?.label}</h4><p className="mt-0.5 text-xs text-muted">{activeDayDrafts.filter((draft) => draft.selected).length} of {activeDayDrafts.length} selected</p></div><div className="flex shrink-0 gap-1"><button type="button" onClick={() => setDrafts((current) => current.map((draft) => (draft.dayOfWeek === null ? "unassigned" : String(draft.dayOfWeek)) === activeDay ? { ...draft, selected: true } : draft))} className="min-h-9 rounded-lg px-2 text-xs font-semibold text-accent hover:bg-accent/10">Select all</button><button type="button" onClick={() => setDrafts((current) => current.map((draft) => (draft.dayOfWeek === null ? "unassigned" : String(draft.dayOfWeek)) === activeDay ? { ...draft, selected: false } : draft))} className="min-h-9 rounded-lg px-2 text-xs font-medium text-muted hover:bg-surface">Clear</button></div></div>
+          {activeDayDrafts.length === 0 ? <p className="px-2 py-7 text-center text-sm text-muted">No detected classes for this day.</p> : <ul className="mt-3 space-y-2">
+            {activeDayDrafts.map((draft) => {
+              const linkedSubject = subjects.find((subject) => subject.id === draft.subjectId) ?? matchSubject(draft.subjectText, subjects);
+              const isEditing = editingId === draft.id;
+              return <li key={draft.id} className="min-w-0 rounded-xl border border-border bg-surface p-3 sm:p-4">
+                <div className="flex min-w-0 items-start gap-3">
+                  <input type="checkbox" checked={draft.selected} onChange={(event) => updateDraft(draft.id, { selected: event.target.checked })} aria-label={`Import ${draft.subjectText} on ${draft.dayOfWeek === null ? "an unassigned day" : DAYS.find((day) => day.value === draft.dayOfWeek)?.label}`} className="mt-1 size-5 shrink-0 accent-[var(--accent)]" />
+                  <div className="min-w-0 flex-1 overflow-hidden"><p className="truncate font-semibold leading-5">{draft.subjectText || "Unnamed class"}</p><p className="mt-1 truncate text-xs leading-5 text-muted">{draft.dayOfWeek === null ? "Choose a day" : DAYS.find((day) => day.value === draft.dayOfWeek)?.label} · {draft.needsReview ? "Check time and subject" : `${draft.startTime}–${draft.endTime}`}</p><p className="mt-1 truncate text-xs text-muted">{linkedSubject ? `Matches ${linkedSubject.name}` : `Will create subject ${draft.subjectText || "from this name"}`}</p></div>
+                  <button type="button" aria-expanded={isEditing} onClick={() => setEditingId(isEditing ? null : draft.id)} className="min-h-9 shrink-0 rounded-lg px-2 text-xs font-semibold text-accent hover:bg-accent/10 focus-visible:outline-2 focus-visible:outline-accent">{isEditing ? "Done" : "Edit"}</button>
+                </div>
+                {isEditing && <div className="mt-4 grid min-w-0 gap-3 border-t border-border pt-3 sm:grid-cols-2">
+                  <div className="min-w-0"><label htmlFor={`import-name-${draft.id}`} className="block text-xs font-medium text-muted">Class or subject name</label><input id={`import-name-${draft.id}`} value={draft.subjectText} maxLength={100} onChange={(event) => updateDraft(draft.id, { subjectText: event.target.value })} className="mt-1 min-h-11 min-w-0 w-full rounded-xl border border-border bg-background px-3 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/20" /></div>
+                  <div className="min-w-0"><label htmlFor={`import-subject-${draft.id}`} className="block text-xs font-medium text-muted">Subject</label><ChoicePicker id={`import-subject-${draft.id}`} value={draft.subjectId || "__new__"} options={[{ value: "__new__", label: "Create a new subject", marker: "+", description: "Use the name above" }, ...subjects.map((subject) => ({ value: subject.id, label: subject.name, description: [subject.room, subject.teacher].filter(Boolean).join(" · "), color: subject.color }))]} onChange={(value) => updateDraft(draft.id, { subjectId: value === "__new__" ? "" : value })} /></div>
+                  <div className="min-w-0"><label htmlFor={`import-day-${draft.id}`} className="block text-xs font-medium text-muted">Day</label><ChoicePicker id={`import-day-${draft.id}`} value={draft.dayOfWeek === null ? "unassigned" : String(draft.dayOfWeek)} options={DAY_OPTIONS} onChange={(value) => { const dayOfWeek = value === "unassigned" ? null : Number(value); updateDraft(draft.id, { dayOfWeek }); setEditingId(null); setActiveDay(value); }} /></div>
+                  <div className="grid min-w-0 grid-cols-1 gap-2 min-[420px]:grid-cols-2"><div className="min-w-0"><label htmlFor={`import-start-${draft.id}`} className="block text-xs font-medium text-muted">Starts</label><TimePicker id={`import-start-${draft.id}`} value={draft.startTime} onChange={(startTime) => updateDraft(draft.id, { startTime })} /></div><div className="min-w-0"><label htmlFor={`import-end-${draft.id}`} className="block text-xs font-medium text-muted">Ends</label><TimePicker id={`import-end-${draft.id}`} value={draft.endTime} onChange={(endTime) => updateDraft(draft.id, { endTime })} /></div></div>
+                  <div className="min-w-0"><label htmlFor={`import-room-${draft.id}`} className="block text-xs font-medium text-muted">Room (optional)</label><input id={`import-room-${draft.id}`} value={draft.room} maxLength={60} onChange={(event) => updateDraft(draft.id, { room: event.target.value })} placeholder="Room" className="mt-1 min-h-11 min-w-0 w-full rounded-xl border border-border bg-background px-3 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/20" /></div>
+                  <div className="min-w-0"><label htmlFor={`import-teacher-${draft.id}`} className="block text-xs font-medium text-muted">Teacher (optional)</label><input id={`import-teacher-${draft.id}`} value={draft.teacher} maxLength={80} onChange={(event) => updateDraft(draft.id, { teacher: event.target.value })} placeholder="Teacher" className="mt-1 min-h-11 min-w-0 w-full rounded-xl border border-border bg-background px-3 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/20" /></div>
+                </div>}
+              </li>;
+            })}
+          </ul>}
+        </section>
         {rawText && <div className="mt-4"><button type="button" aria-expanded={showRaw} onClick={() => setShowRaw(!showRaw)} className="min-h-10 rounded-lg px-2 text-xs font-medium text-accent hover:bg-accent/10">{showRaw ? "Hide" : "Show"} recognized text</button>{showRaw && <pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap rounded-xl border border-border bg-background p-3 text-xs text-muted">{rawText}</pre>}</div>}
         <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4"><p className="max-w-lg text-xs leading-5 text-muted">Image recognition runs on your device. OCR assets are downloaded the first time; after reviewing, imported classes are saved to this device.</p><button type="button" disabled={!saveableCount || saving} onClick={() => void save()} className="min-h-11 rounded-xl bg-accent px-5 text-sm font-semibold text-accent-foreground disabled:cursor-not-allowed disabled:opacity-50">{saving ? "Importing…" : `Import ${saveableCount} ${saveableCount === 1 ? "class" : "classes"}`}</button></div>
       </>}
     </div>
   );
 }
-
