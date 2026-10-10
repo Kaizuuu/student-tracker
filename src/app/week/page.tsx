@@ -1,5 +1,6 @@
 import WeeklyCalendar from "@/components/WeeklyCalendar";
+import SavedPageDesign from "@/components/SavedPageDesign";
 
 export default function WeekPage() {
-  return <WeeklyCalendar />;
+  return <SavedPageDesign page="week"><WeeklyCalendar /></SavedPageDesign>;
 }

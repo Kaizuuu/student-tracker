@@ -10,6 +10,12 @@ export interface ChoiceOption {
   marker?: string;
 }
 
+function colorMarkerStyle(color?: string) {
+  if (!color) return undefined;
+  if (color.startsWith("linear-gradient(")) return { color: "white", background: color };
+  return { color, backgroundColor: `${color}18` };
+}
+
 interface ChoicePickerProps {
   id: string;
   value: string;
@@ -79,7 +85,7 @@ export default function ChoicePicker({ id, value, options, onChange, placeholder
         }}
         className={`group flex min-h-12 w-full items-center gap-3 rounded-2xl border bg-surface px-3.5 text-left text-sm shadow-[0_2px_8px_rgb(34_78_108_/_4%)] outline-none transition-[border-color,box-shadow,background-color] hover:border-accent/40 hover:bg-background/60 focus-visible:border-accent focus-visible:ring-4 focus-visible:ring-accent/10 disabled:cursor-not-allowed disabled:opacity-60 ${open ? "border-accent/50 ring-4 ring-accent/10" : "border-border"}`}
       >
-        <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-accent/10 text-sm font-semibold text-accent" style={selected?.color ? { color: selected.color, backgroundColor: `${selected.color}18` } : undefined} aria-hidden="true">
+        <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-accent/10 text-sm font-semibold text-accent" style={colorMarkerStyle(selected?.color)} aria-hidden="true">
           {selected?.marker ?? <span className="size-2.5 rounded-full bg-current" />}
         </span>
         <span className="min-w-0 flex-1">
@@ -107,7 +113,7 @@ export default function ChoicePicker({ id, value, options, onChange, placeholder
             }}
             className={`flex min-h-12 w-full items-center gap-3 rounded-xl px-2.5 py-2 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent ${isSelected ? "bg-accent/10" : "hover:bg-background"}`}
           >
-            <span className={`flex size-8 shrink-0 items-center justify-center rounded-xl text-sm font-semibold ${isSelected ? "bg-accent/15 text-accent" : "bg-background text-muted"}`} style={option.color ? { color: option.color, backgroundColor: `${option.color}18` } : undefined} aria-hidden="true">
+            <span className={`flex size-8 shrink-0 items-center justify-center rounded-xl text-sm font-semibold ${isSelected ? "bg-accent/15 text-accent" : "bg-background text-muted"}`} style={colorMarkerStyle(option.color)} aria-hidden="true">
               {option.marker ?? <span className="size-2.5 rounded-full bg-current" />}
             </span>
             <span className="min-w-0 flex-1">

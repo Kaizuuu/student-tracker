@@ -12,7 +12,7 @@ import ReminderCenter from "@/components/ReminderCenter";
 const tabs = [
   { href: "/", label: "Today", icon: "today" },
   { href: "/tasks", label: "Tasks", icon: "tasks" },
-  { href: "/classes", label: "Classes", icon: "classes" },
+  { href: "/classes", label: "Courses", icon: "classes" },
   { href: "/more", label: "More", icon: "more" },
 ] as const;
 
@@ -23,7 +23,7 @@ const desktopLinks = [
   { href: "/habits", label: "Daily habits", icon: "habits" },
   { href: "/routines", label: "Routines", icon: "routines" },
   { href: "/review", label: "Weekly review", icon: "review" },
-  { href: "/subjects", label: "Subjects", icon: "subjects" },
+  { href: "/design", label: "Design direction", icon: "review" },
 ] as const;
 
 type NavigationIcon = (typeof tabs)[number]["icon"] | (typeof desktopLinks)[number]["icon"];
@@ -61,8 +61,6 @@ function TabIcon({ name }: { name: NavigationIcon }) {
       return <svg {...shared}><path d="M5 6h14M5 12h14M5 18h14" /><circle cx="3" cy="6" r=".5" /><circle cx="3" cy="12" r=".5" /><circle cx="3" cy="18" r=".5" /></svg>;
     case "review":
       return <svg {...shared}><path d="M4 19V5M4 19h16M7 15l4-4 3 2 5-6" /><path d="M16 7h3v3" /></svg>;
-    case "subjects":
-      return <svg {...shared}><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21V5.5Z" /><path d="M4 17.5A2.5 2.5 0 0 1 6.5 15H20M8 7h8M8 10h6" /></svg>;
   }
 }
 

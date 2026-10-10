@@ -1,5 +1,6 @@
 import TasksManager from "@/components/TasksManager";
+import SavedPageDesign from "@/components/SavedPageDesign";
 
 export default function TasksPage() {
-  return <TasksManager />;
+  return <SavedPageDesign page="tasks"><TasksManager /></SavedPageDesign>;
 }

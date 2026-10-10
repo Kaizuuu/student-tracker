@@ -384,7 +384,7 @@ export default function TasksManager() {
                       </div>
                       <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
                         <span className={dueDateTextClasses(task.completedAt ? "none" : getDueDateTone(task.dueAt))}>{formatDueAt(task.dueAt)}</span>
-                        {subject && <span className="inline-flex items-center gap-1.5"><span className="size-2 rounded-full" style={{ backgroundColor: subject.color }} aria-hidden="true" />{subject.name}</span>}
+                        {subject && <span className="inline-flex items-center gap-1.5"><span className="size-2 rounded-full" style={{ background: subject.color }} aria-hidden="true" />{subject.name}</span>}
                       </div>
                       {task.notes && <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6 text-muted">{task.notes}</p>}
                     </div>

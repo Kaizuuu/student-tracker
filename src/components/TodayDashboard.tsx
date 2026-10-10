@@ -214,10 +214,10 @@ export default function TodayDashboard() {
   return (
     <section className="today-page mx-auto w-full max-w-4xl">
       <section className="today-summary-card rounded-[2rem] border border-border bg-surface p-5 sm:p-7" aria-label="Today summary">
-        <p className="section-eyebrow mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-accent">Your day, at a glance</p>
+        <p className="section-eyebrow mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-accent">Today · make room for good work</p>
         <div className="today-heading flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">Today</h1>
+            <h1 className="text-4xl sm:text-5xl">Make room for good work.</h1>
             <p className="mt-2 text-base font-medium text-muted sm:text-lg">{format(today, "EEEE, MMMM d")}</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -306,7 +306,7 @@ export default function TodayDashboard() {
                     const subject = subjectById.get(classItem.subjectId ?? "");
                     return (
                       <li key={classItem.id} className="flex gap-3 border-t border-border pt-3 first:border-0 first:pt-0">
-                        <span className="mt-0.5 h-10 w-1 shrink-0 rounded-full" style={{ backgroundColor: subject?.color ?? "var(--border)" }} aria-hidden="true" />
+                        <span className="mt-0.5 h-10 w-1 shrink-0 rounded-full" style={{ background: subject?.color ?? "var(--border)" }} aria-hidden="true" />
                         <div className="min-w-0">
                           <p className="break-words font-medium">{getSubjectName(subject)}</p>
                           <p className="mt-1 text-sm text-muted">{formatTime(classTimeOn(today, classItem.startTime))} – {formatTime(classTimeOn(today, classItem.endTime))}</p>

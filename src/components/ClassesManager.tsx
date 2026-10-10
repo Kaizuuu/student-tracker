@@ -45,7 +45,7 @@ function formatTime(value: string) {
   });
 }
 
-export default function ClassesManager() {
+export default function ClassesManager({ embedded = false, onManageSubjects }: { embedded?: boolean; onManageSubjects?: () => void } = {}) {
   const [classes, setClasses] = useState<ClassRecord[]>([]);
   const [subjects, setSubjects] = useState<SubjectRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -245,13 +245,13 @@ export default function ClassesManager() {
   const dayName = WEEKDAYS.find((day) => day.value === selectedDay)?.label ?? "Monday";
 
   return (
-    <section className="mx-auto w-full max-w-3xl">
-      <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-muted">Your weekly timetable</p>
+    <section className={embedded ? "w-full" : "mx-auto w-full max-w-3xl"}>
       <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
+        {!embedded && <div>
+          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-muted">Your weekly timetable</p>
           <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Classes</h1>
           <p className="mt-3 max-w-lg text-base leading-7 text-muted">A clear view of what meets each day, week after week.</p>
-        </div>
+        </div>}
         {!formOpen && (
           <div className="flex flex-wrap gap-2">
             <button type="button" onClick={() => { setImportOpen((open) => !open); setNotice(""); }} className="min-h-11 rounded-xl border border-border px-4 text-sm font-semibold hover:bg-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">{importOpen ? "Close import" : "Import screenshot"}</button>
@@ -332,9 +332,9 @@ export default function ClassesManager() {
       ) : subjects.length === 0 ? (
         <div className="mt-8 rounded-3xl border border-dashed border-border bg-surface px-6 py-10 text-center sm:px-10">
           <span className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-background text-xl text-accent" aria-hidden="true">▦</span>
-          <h2 className="mt-5 text-lg font-semibold">Add a subject first</h2>
-          <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-muted">Each class belongs to a subject. Create your subjects, then come back to build your weekly timetable.</p>
-          <Link href="/subjects" className="mt-6 inline-flex min-h-11 items-center rounded-xl bg-accent px-4 text-sm font-semibold text-accent-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">Manage subjects</Link>
+          <h2 className="mt-5 text-lg font-semibold">Set up your first course</h2>
+          <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-muted">Create a subject, then add its weekly meeting here without leaving this page.</p>
+          {onManageSubjects ? <button type="button" onClick={onManageSubjects} className="mt-6 inline-flex min-h-11 items-center rounded-xl bg-accent px-4 text-sm font-semibold text-accent-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">Add a subject</button> : <Link href="/subjects" className="mt-6 inline-flex min-h-11 items-center rounded-xl bg-accent px-4 text-sm font-semibold text-accent-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">Manage subjects</Link>}
         </div>
       ) : (
         <>
@@ -377,7 +377,7 @@ export default function ClassesManager() {
                       <p className="text-sm font-semibold tabular-nums">{formatTime(classItem.startTime)}</p>
                       <p className="mt-1 text-xs tabular-nums text-muted">{formatTime(classItem.endTime)}</p>
                     </div>
-                    <div className="w-1 shrink-0 rounded-full" style={{ backgroundColor: subject?.color ?? "var(--border)" }} aria-hidden="true" />
+                    <div className="w-1 shrink-0 rounded-full" style={{ background: subject?.color ?? "var(--border)" }} aria-hidden="true" />
                     <div className="min-w-0 flex-1 basis-32">
                       <h3 className="truncate font-semibold">{subjectName}</h3>
                       {(classItem.room || classItem.teacher) && (

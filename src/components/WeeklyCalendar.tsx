@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { getRecords } from "@/lib/db";
 import type { CalendarEntryRecord, ClassRecord, SubjectRecord, TaskRecord, TaskPriority } from "@/types/records";
 
@@ -157,6 +158,7 @@ function ActivityCard({ item, compact = false }: { item: CalendarActivity; compa
 }
 
 export default function WeeklyCalendar() {
+  const pathname = usePathname();
   const [view, setView] = useState<CalendarView>("week");
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [activityFilter, setActivityFilter] = useState<ActivityFilter>("all");
@@ -171,7 +173,6 @@ export default function WeeklyCalendar() {
 
   useEffect(() => {
     let active = true;
-    setSelectedDate(dayStart(new Date()));
     void Promise.all([getRecords("classes"), getRecords("tasks"), getRecords("calendarEntries"), getRecords("subjects")])
       .then(([nextClasses, nextTasks, nextEntries, nextSubjects]) => {
         if (!active) return;
@@ -187,9 +188,19 @@ export default function WeeklyCalendar() {
   }, []);
 
   useEffect(() => {
-    if (view !== "week" || !selectedDate) return;
-    weekDayRefs.current.get(dateKey(selectedDate))?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
-  }, [view, selectedDate]);
+    if (pathname !== "/week") return;
+    setSelectedDate(dayStart(new Date()));
+    setView("week");
+  }, [pathname]);
+
+  useLayoutEffect(() => {
+    if (loading || view !== "week" || !selectedDate) return;
+    const card = weekDayRefs.current.get(dateKey(selectedDate));
+    const strip = card?.parentElement;
+    if (!card || !strip) return;
+    const cardLeft = card.getBoundingClientRect().left - strip.getBoundingClientRect().left;
+    strip.scrollLeft += cardLeft - (strip.clientWidth - card.clientWidth) / 2;
+  }, [loading, view, selectedDate]);
 
   const subjectMap = useMemo(() => new Map(subjects.map((subject) => [subject.id, subject])), [subjects]);
   const weekDays = useMemo(() => selectedDate ? Array.from({ length: 7 }, (_, index) => {
@@ -246,7 +257,7 @@ export default function WeeklyCalendar() {
         </div>
         <div className="mt-3 flex justify-center rounded-xl bg-background p-1 sm:mt-0" aria-label="Calendar view">
           {([["day", "Daily"], ["week", "Weekly"], ["month", "Monthly"]] as const).map(([value, label]) => (
-            <button key={value} type="button" onClick={() => { if (value === "day") setSelectedDate(dayStart(new Date())); setView(value); }} aria-pressed={view === value} className={`min-h-10 flex-1 rounded-lg px-3 text-sm font-semibold sm:flex-none ${view === value ? "bg-surface text-accent shadow-sm" : "text-muted hover:text-foreground"}`}>{label}</button>
+            <button key={value} type="button" onClick={() => { if (value === "day" || value === "week") setSelectedDate(dayStart(new Date())); setView(value); }} aria-pressed={view === value} className={`min-h-10 flex-1 rounded-lg px-3 text-sm font-semibold sm:flex-none ${view === value ? "bg-surface text-accent shadow-sm" : "text-muted hover:text-foreground"}`}>{label}</button>
           ))}
         </div>
       </header>

@@ -11,11 +11,28 @@ import type { CalendarEntryRecord, ClassRecord, SubjectRecord, TaskRecord } from
 
 const COLORS = [
   { name: "Blue", value: "#4D7CFE" },
+  { name: "Sky", value: "#39A7D8" },
+  { name: "Teal", value: "#18A999" },
+  { name: "Aqua", value: "#39C6C8" },
   { name: "Coral", value: "#E87952" },
+  { name: "Orange", value: "#F28C45" },
   { name: "Violet", value: "#8B6CE5" },
+  { name: "Indigo", value: "#5966D9" },
   { name: "Green", value: "#2F9D75" },
+  { name: "Mint", value: "#54B98A" },
   { name: "Amber", value: "#D69A29" },
   { name: "Rose", value: "#D85880" },
+  { name: "Berry", value: "#A84FA3" },
+  { name: "Slate", value: "#62788A" },
+] as const;
+
+const GRADIENTS = [
+  { name: "Ocean", value: "linear-gradient(135deg, #4D7CFE, #39C6C8)" },
+  { name: "Blue hour", value: "linear-gradient(135deg, #5966D9, #A78BFA)" },
+  { name: "Lagoon", value: "linear-gradient(135deg, #18A999, #39A7D8)" },
+  { name: "Citrus", value: "linear-gradient(135deg, #54B98A, #D6C64A)" },
+  { name: "Sunset", value: "linear-gradient(135deg, #F28C45, #D85880)" },
+  { name: "Berry", value: "linear-gradient(135deg, #8B6CE5, #D85880)" },
 ] as const;
 
 type SubjectLinks = { classes: number; tasks: number; calendarEntries: number };
@@ -42,7 +59,7 @@ function countSubjectLinks(
   return counts;
 }
 
-export default function SubjectsManager() {
+export default function SubjectsManager({ embedded = false }: { embedded?: boolean } = {}) {
   const [subjects, setSubjects] = useState<SubjectRecord[]>([]);
   const [linksBySubject, setLinksBySubject] = useState<Record<string, SubjectLinks>>({});
   const [loading, setLoading] = useState(true);
@@ -186,15 +203,15 @@ export default function SubjectsManager() {
   }
 
   return (
-    <section className="mx-auto w-full max-w-2xl">
-      <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-muted">Your planner</p>
+    <section className={embedded ? "w-full" : "mx-auto w-full max-w-2xl"}>
       <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
+        {!embedded && <div>
+          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-muted">Your planner</p>
           <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Subjects</h1>
           <p className="mt-3 max-w-lg text-base leading-7 text-muted">
             Keep each subject’s room, teacher, notes, and useful links together. Classes, tasks, exams, and events can be connected to it.
           </p>
-        </div>
+        </div>}
         {!formOpen && (
           <button
             type="button"
@@ -230,7 +247,8 @@ export default function SubjectsManager() {
 
           <fieldset className="mt-6">
             <legend className="text-sm font-medium">Color</legend>
-            <div className="mt-3 flex flex-wrap gap-3">
+            <p className="mt-1 text-xs text-muted">Choose a solid color or a gradient for this subject.</p>
+            <div className="mt-3 flex flex-wrap gap-3" aria-label="Solid subject colors">
               {COLORS.map((option) => (
                 <button
                   key={option.value}
@@ -240,7 +258,22 @@ export default function SubjectsManager() {
                   onClick={() => setColor(option.value)}
                   className={`flex size-11 items-center justify-center rounded-full border-2 transition-transform hover:scale-105 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${color === option.value ? "border-foreground" : "border-transparent"}`}
                 >
-                  <span className="size-7 rounded-full" style={{ backgroundColor: option.value }} />
+                  <span className="size-7 rounded-full" style={{ background: option.value }} />
+                </button>
+              ))}
+            </div>
+            <p className="mt-5 text-xs font-medium text-muted">Gradients</p>
+            <div className="mt-2 flex flex-wrap gap-3" aria-label="Gradient subject colors">
+              {GRADIENTS.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  aria-label={`${option.name} gradient${color === option.value ? ", selected" : ""}`}
+                  aria-pressed={color === option.value}
+                  onClick={() => setColor(option.value)}
+                  className={`flex size-12 items-center justify-center rounded-full border-2 transition-transform hover:scale-105 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${color === option.value ? "border-foreground" : "border-transparent"}`}
+                >
+                  <span className="size-8 rounded-full shadow-sm" style={{ background: option.value }} />
                 </button>
               ))}
             </div>
@@ -288,7 +321,7 @@ export default function SubjectsManager() {
             <span className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-background text-xl text-accent" aria-hidden="true">✳</span>
             <h2 className="mt-5 text-lg font-semibold">Start with a subject</h2>
             <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-muted">Add a subject such as Biology or History. You can connect classes and work to it as you build your planner.</p>
-            {!formOpen && <button type="button" onClick={startCreate} className="mt-6 min-h-11 rounded-xl border border-border px-4 text-sm font-semibold hover:bg-background focus-visible:outline-2 focus-visible:outline-accent">Add your first subject</button>}
+            {!embedded && !formOpen && <button type="button" onClick={startCreate} className="mt-6 min-h-11 rounded-xl border border-border px-4 text-sm font-semibold hover:bg-background focus-visible:outline-2 focus-visible:outline-accent">Add your first subject</button>}
           </div>
         ) : (
           <ul className="space-y-3" aria-label="Your subjects">
@@ -302,7 +335,7 @@ export default function SubjectsManager() {
 
               return (
             <li key={subject.id} className="flex flex-wrap items-start gap-3 rounded-2xl border border-border bg-surface p-4 sm:gap-4 sm:p-5">
-                  <span className="size-3.5 shrink-0 rounded-full" style={{ backgroundColor: subject.color }} aria-hidden="true" />
+                  <span className="size-3.5 shrink-0 rounded-full" style={{ background: subject.color }} aria-hidden="true" />
                   <div className="min-w-0 flex-1 basis-36">
                     <h2 className="break-words font-semibold">{subject.name}</h2>
                     <p className="mt-1 text-xs text-muted">{linkSummary || "No linked items yet"}</p>
