@@ -135,7 +135,7 @@ export default function QuickAdd() {
 
   return (
     <>
-      <div className="relative flex h-full flex-col items-center justify-center">
+      <div className="quick-add-control relative flex h-full flex-col items-center justify-center">
         {menuOpen && (
           <div id="quick-add-options" className="absolute bottom-full left-1/2 z-50 mb-2 w-52 -translate-x-1/2 rounded-2xl border border-border bg-surface p-2 shadow-xl" aria-label="Quick add options">
             <p className="px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted">Add quickly</p>
@@ -150,7 +150,7 @@ export default function QuickAdd() {
           aria-expanded={menuOpen}
           aria-controls="quick-add-options"
           onClick={() => setMenuOpen((open) => !open)}
-          className="z-10 flex size-14 -translate-y-4 items-center justify-center rounded-full border-4 border-surface bg-accent text-accent-foreground shadow-lg shadow-black/15 transition-transform hover:scale-105 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
+          className="quick-add-button z-10 flex size-14 -translate-y-4 items-center justify-center rounded-full border-4 border-surface bg-accent text-accent-foreground shadow-lg shadow-black/15 transition-transform hover:scale-105 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
         >
           <svg
             aria-hidden="true"
@@ -160,6 +160,7 @@ export default function QuickAdd() {
           >
             <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" />
           </svg>
+          <span className="quick-add-label">New item</span>
         </button>
       </div>
 
