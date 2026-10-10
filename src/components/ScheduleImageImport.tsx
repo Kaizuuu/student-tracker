@@ -77,8 +77,8 @@ function normalizeSubject(value: string) {
 }
 
 function matchSubject(text: string, subjects: SubjectRecord[]) {
-  const key = normalizeSubject(text);
-  return subjects.find((subject) => normalizeSubject(subject.name) === key);
+  const key = normalizeSubject(text).replace(/\s+/g, "");
+  return subjects.find((subject) => normalizeSubject(subject.name).replace(/\s+/g, "") === key);
 }
 
 function classTextBounds(line: OCRLine) {
@@ -92,10 +92,160 @@ function classTextBounds(line: OCRLine) {
   };
 }
 
-function buildDrafts(lines: OCRLine[], subjects: SubjectRecord[]): DraftClass[] {
+type GridTime = {
+  x: number;
+  y: number;
+  value?: string;
+  range?: { startTime: string; endTime: string };
+};
+
+function lineCenterY(line: OCRLine) {
+  return line.bbox ? (line.bbox.y0 + line.bbox.y1) / 2 : 0;
+}
+
+function subjectTextFromLine(line: OCRLine) {
+  const ignored = new Set([
+    "weekly", "schedule", "timetable", "class", "classes", "subject", "subjects", "time", "room", "teacher",
+    "small", "steps", "build", "big", "progress", "break", "lunch", "recess",
+  ]);
+  const tokens = line.text.match(/[\p{L}\p{N}]+/gu) ?? [];
+  const useful = tokens.filter((token) => {
+    const normalized = token.toLocaleLowerCase();
+    return /[\p{L}]{2}/u.test(token) && !ignored.has(normalized) && !dayInText(token) && !/^(?:am|pm)$/i.test(token);
+  });
+  return useful.join(" ").trim();
+}
+
+function timesOnLine(line: OCRLine): GridTime[] {
+  const range = timeRangeInText(line.text);
+  if (range && line.bbox) {
+    const timeWords = line.words?.filter((word) => /\d{1,2}(?::\d{2})?/u.test(word.text)) ?? [];
+    const x = timeWords.length
+      ? timeWords.reduce((sum, word) => sum + (word.bbox.x0 + word.bbox.x1) / 2, 0) / timeWords.length
+      : (line.bbox.x0 + line.bbox.x1) / 2;
+    return [{ x, y: lineCenterY(line), range }];
+  }
+
+  const words = line.words ?? [];
+  return words.flatMap((word, index) => {
+    const match = word.text.trim().match(/^(\d{1,2}(?::\d{2})?)(am|pm)?$/i);
+    if (!match || (!match[1].includes(":") && !match[2])) return [];
+    let meridiem = match[2];
+    if (!meridiem) {
+      const wordY = (word.bbox.y0 + word.bbox.y1) / 2;
+      const adjacentMeridiem = words
+        .filter((candidate, candidateIndex) => candidateIndex !== index && /^(?:am|pm)$/i.test(candidate.text.trim()))
+        .filter((candidate) => Math.abs((candidate.bbox.y0 + candidate.bbox.y1) / 2 - wordY) <= 14)
+        .filter((candidate) => Math.abs(candidate.bbox.x0 - word.bbox.x1) <= 36 || Math.abs(word.bbox.x0 - candidate.bbox.x1) <= 36)
+        .sort((a, b) => Math.abs(a.bbox.x0 - word.bbox.x1) - Math.abs(b.bbox.x0 - word.bbox.x1))[0];
+      meridiem = adjacentMeridiem?.text;
+    }
+    const value = parseTime(`${match[1]} ${meridiem ?? ""}`);
+    return value ? [{ x: (word.bbox.x0 + word.bbox.x1) / 2, y: (word.bbox.y0 + word.bbox.y1) / 2, value }] : [];
+  });
+}
+
+/** Reads a weekly grid by its horizontal weekday columns and the times beneath each class. */
+function buildWeeklyGridDrafts(lines: OCRLine[], subjects: SubjectRecord[]): DraftClass[] | null {
+  const timeLines = lines.flatMap((line) => timesOnLine(line));
+  if (!timeLines.length) return null;
+  const firstTimeY = Math.min(...timeLines.map((time) => time.y));
+  const headerLine = lines
+    .filter((line) => {
+      const words = line.words ?? [];
+      if (words.length < 5 || words.length > 7 || lineCenterY(line) >= firstTimeY - 100) return false;
+      const xs = words.map((word) => (word.bbox.x0 + word.bbox.x1) / 2);
+      return Math.max(...xs) - Math.min(...xs) > 240 && !timeRangeInText(line.text);
+    })
+    .sort((a, b) => lineCenterY(b) - lineCenterY(a))[0];
+  if (!headerLine?.words) return null;
+
+  const headerWords = [...headerLine.words].sort((a, b) => a.bbox.x0 - b.bbox.x0);
+  const recognizedDays = headerWords.map((word) => dayInText(word.text)?.value ?? null);
+  const allDaysRecognized = recognizedDays.every((day) => day !== null);
+  const columnDays = allDaysRecognized
+    ? recognizedDays as number[]
+    : DAYS.slice(0, headerWords.length).map((day) => day.value);
+  const columns = headerWords.map((word, index) => ({
+    x: (word.bbox.x0 + word.bbox.x1) / 2,
+    dayOfWeek: columnDays[index],
+  }));
+  const closestColumn = (x: number) => columns.reduce((closest, column) => Math.abs(column.x - x) < Math.abs(closest.x - x) ? column : closest);
+
+  const timeByDay = new Map<number, GridTime[]>();
+  for (const time of timeLines) {
+    const dayOfWeek = closestColumn(time.x).dayOfWeek;
+    const group = timeByDay.get(dayOfWeek) ?? [];
+    group.push(time);
+    timeByDay.set(dayOfWeek, group);
+  }
+
+  const labels = lines.flatMap((line) => {
+    if (!line.bbox || timesOnLine(line).length) return [];
+    const bounds = classTextBounds(line);
+    const subjectText = subjectTextFromLine(line);
+    if (!bounds || subjectText.length < 2) return [];
+    return [{ subjectText: subjectText.slice(0, 100), x: (bounds.x0 + bounds.x1) / 2, y: (bounds.y0 + bounds.y1) / 2 }];
+  }).map((label) => ({ ...label, dayOfWeek: closestColumn(label.x).dayOfWeek }));
+
+  const usedLabels = new Set<string>();
+  const drafts: DraftClass[] = [];
+  for (const [dayOfWeek, readings] of timeByDay) {
+    const ordered = readings.sort((a, b) => a.y - b.y || a.x - b.x);
+    const intervals: Array<{ startTime: string; endTime: string; y: number }> = [];
+    for (let index = 0; index < ordered.length;) {
+      const current = ordered[index];
+      if (current.range) {
+        intervals.push({ ...current.range, y: current.y });
+        index += 1;
+        continue;
+      }
+      const next = ordered[index + 1];
+      if (current.value && next?.value && next.y - current.y <= 100) {
+        intervals.push({ startTime: current.value, endTime: next.value, y: current.y });
+        index += 2;
+        continue;
+      }
+      index += 1;
+    }
+
+    for (const interval of intervals) {
+      const label = labels
+        .filter((candidate) => candidate.dayOfWeek === dayOfWeek && candidate.y < interval.y && interval.y - candidate.y <= 150)
+        .filter((candidate) => !usedLabels.has(`${dayOfWeek}:${candidate.y}:${candidate.subjectText}`))
+        .sort((a, b) => b.y - a.y)[0];
+      if (!label) continue;
+      usedLabels.add(`${dayOfWeek}:${label.y}:${label.subjectText}`);
+      const subject = matchSubject(label.subjectText, subjects);
+      const subjectText = subject?.name ?? label.subjectText;
+      const key = `${normalizeSubject(subjectText)}|${dayOfWeek}|${interval.startTime}`;
+      if (drafts.some((draft) => `${normalizeSubject(draft.subjectText)}|${draft.dayOfWeek}|${draft.startTime}` === key)) continue;
+      drafts.push({
+        id: crypto.randomUUID(),
+        subjectText,
+        subjectId: subject?.id ?? "",
+        dayOfWeek,
+        startTime: interval.startTime,
+        endTime: interval.endTime,
+        room: "",
+        teacher: "",
+        needsReview: !subject || interval.startTime >= interval.endTime,
+        selected: true,
+      });
+    }
+  }
+  return drafts.slice(0, 40);
+}
+
+function buildDrafts(lines: OCRLine[], subjects: SubjectRecord[], useWeeklyGrid = true): DraftClass[] {
   const normalizedLines = lines
     .map((line) => ({ ...line, text: line.text.replace(/\s+/g, " ").trim() }))
     .filter((line) => line.text && /[\p{L}]{2}/u.test(line.text));
+
+  if (useWeeklyGrid) {
+    const weeklyGridDrafts = buildWeeklyGridDrafts(normalizedLines, subjects);
+    if (weeklyGridDrafts) return weeklyGridDrafts;
+  }
 
   const dayHeaders = normalizedLines.flatMap((line) => {
     const wordHeaders = line.words?.flatMap((word) => {
@@ -243,7 +393,7 @@ export default function ScheduleImageImport({ subjects, existingClasses, onClose
     setStatus("Loading on-device text recognition…");
     setProgress(0);
     try {
-      const { createWorker } = await import("tesseract.js");
+      const { createWorker, PSM } = await import("tesseract.js");
       const worker = await createWorker("eng", 1, {
         logger: (message) => {
           if (message.status) setStatus(message.status === "recognizing text" ? "Reading schedule text…" : "Preparing text recognition…");
@@ -251,18 +401,23 @@ export default function ScheduleImageImport({ subjects, existingClasses, onClose
         },
       });
       try {
+        await worker.setParameters({ tessedit_pageseg_mode: PSM.SPARSE_TEXT });
         const result = await worker.recognize(image, {}, { text: true, blocks: true });
         setRawText(result.data.text);
         setEditableText(result.data.text);
         const lines = (result.data.blocks ?? []).flatMap((block) => block.paragraphs.flatMap((paragraph) => paragraph.lines));
-        const parsed = buildDrafts(lines as OCRLine[], subjects);
+        const normalizedLines = (lines as OCRLine[]).map((line) => ({ ...line, text: line.text.replace(/\s+/g, " ").trim() }));
+        const weeklyGridDrafts = buildWeeklyGridDrafts(normalizedLines, subjects);
+        const parsed = weeklyGridDrafts ?? buildDrafts(normalizedLines, subjects, false);
         if (!parsed.length) {
           setError("No class rows were detected. You can turn the recognized text into editable drafts and fill in the missing details.");
         } else {
           setDrafts(parsed);
           setActiveDay(String(parsed.find((draft) => draft.dayOfWeek !== null)?.dayOfWeek ?? "unassigned"));
           setEditingId(null);
-          setStatus(`Found ${parsed.length} possible ${parsed.length === 1 ? "class" : "classes"}. Review each one before importing.`);
+          setStatus(weeklyGridDrafts
+            ? `Mapped ${parsed.length} ${parsed.length === 1 ? "class" : "classes"} from the weekday columns. Review the day, time, and subject before importing.`
+            : `Found ${parsed.length} possible ${parsed.length === 1 ? "class" : "classes"}. Review each one before importing.`);
         }
       } finally {
         await worker.terminate();
