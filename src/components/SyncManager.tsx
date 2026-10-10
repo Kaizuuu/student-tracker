@@ -6,6 +6,7 @@ import type { User } from "@supabase/supabase-js";
 import { createBackup, MAX_BACKUP_FILE_BYTES, parseBackup } from "@/lib/backup";
 import { getBackupRecords, importBackupRecords } from "@/lib/db";
 import { getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase/client";
+import { saveReminderSettings } from "@/lib/reminderSettings";
 
 type CloudSnapshot = { data: unknown; updated_at: string };
 
@@ -127,6 +128,7 @@ export default function SyncManager() {
         : `Restore the cloud snapshot from ${describeTime(cloud.updated_at)} to this device?`;
       if (!window.confirm(confirmation)) return;
       const counts = await importBackupRecords(backup.records, "replace");
+      if (backup.reminderSettings) saveReminderSettings(backup.reminderSettings);
       await refreshCloud(user);
       setFeedback({ type: "success", text: `Restored ${recordCount(counts)} records to this device. Open another page to refresh its view.` });
     } catch (error) {
@@ -139,7 +141,7 @@ export default function SyncManager() {
 
   return <section aria-labelledby="sync-heading" className="mt-5 rounded-3xl border border-border bg-surface p-5 shadow-[var(--shadow-card)] sm:p-7">
     <p className="text-xs font-semibold uppercase tracking-[0.16em] text-accent">Optional · private account</p>
-    <div className="mt-1 flex flex-wrap items-start justify-between gap-3"><div><h2 id="sync-heading" className="text-xl font-semibold">Sync across devices</h2><p className="mt-2 max-w-xl text-sm leading-6 text-muted">Your planner stays on this device unless you choose to sync. Sign in on another device to upload or restore a private snapshot.</p></div><span className={`rounded-full px-3 py-1 text-xs font-semibold ${!configured ? "bg-background text-muted" : user ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : "bg-accent/10 text-accent"}`}>{!configured ? "Not connected" : user ? "Signed in" : "Cloud ready"}</span></div>
+    <div className="mt-1 flex flex-wrap items-start justify-between gap-3"><div><h2 id="sync-heading" className="text-xl font-semibold">Sync across devices</h2><p className="mt-2 max-w-xl text-sm leading-6 text-muted">Upload or restore a private planner snapshot here. While push notifications are enabled, planner changes also sync automatically so scheduled reminders can reach this device when the app is closed.</p></div><span className={`rounded-full px-3 py-1 text-xs font-semibold ${!configured ? "bg-background text-muted" : user ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : "bg-accent/10 text-accent"}`}>{!configured ? "Not connected" : user ? "Signed in" : "Cloud ready"}</span></div>
 
     {!configured ? <div className="mt-5 rounded-2xl border border-dashed border-border bg-background p-4">
       <p className="text-sm font-semibold">Connect a Supabase project to enable sync</p>
@@ -152,7 +154,7 @@ export default function SyncManager() {
       <div className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-xs font-medium text-muted">Signed in as</p><p className="mt-0.5 break-all font-semibold">{user.email}</p></div><button type="button" onClick={() => void signOut()} disabled={working} className="min-h-10 rounded-xl px-3 text-sm font-medium text-muted hover:bg-surface hover:text-foreground disabled:opacity-50">Sign out</button></div>
       <div className="mt-4 rounded-xl border border-border bg-surface px-3 py-3 text-sm">{cloudSnapshot ? <><p className="font-semibold">Cloud snapshot available</p><p className="mt-1 text-xs text-muted">Last uploaded {describeTime(cloudSnapshot.updated_at)}</p></> : <><p className="font-semibold">No cloud snapshot yet</p><p className="mt-1 text-xs text-muted">Upload this device to create your first copy.</p></>}</div>
       <div className="mt-3 grid gap-2 sm:grid-cols-2"><button type="button" onClick={() => void uploadLocalData()} disabled={working} className="min-h-12 rounded-xl bg-accent px-4 text-sm font-semibold text-accent-foreground disabled:cursor-wait disabled:opacity-60">{working ? "Working…" : "Upload this device"}</button><button type="button" onClick={() => void restoreCloudData()} disabled={working || !cloudSnapshot} className="min-h-12 rounded-xl border border-border bg-surface px-4 text-sm font-semibold text-foreground hover:bg-background disabled:cursor-not-allowed disabled:opacity-50">Restore cloud backup</button></div>
-      <p className="mt-3 text-xs leading-5 text-muted">Sync is manual and replaces the cloud snapshot on upload. Restore replaces local data after confirmation. Your device remains usable offline.</p>
+      <p className="mt-3 text-xs leading-5 text-muted">Manual upload replaces the cloud snapshot; push-enabled planner edits also refresh that snapshot automatically. Restore replaces local data after confirmation. Your device remains usable offline.</p>
     </div>}
 
     {feedback && <p role={feedback.type === "error" ? "alert" : "status"} className={`mt-4 rounded-xl px-4 py-3 text-sm font-medium ${feedback.type === "error" ? "bg-red-500/5 text-red-700 dark:text-red-300" : feedback.type === "info" ? "bg-background text-muted" : "bg-accent/10 text-foreground"}`}>{feedback.text}</p>}

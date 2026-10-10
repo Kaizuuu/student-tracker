@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { addRecord, getRecord, getRecords } from "@/lib/db";
+import { FOCUS_TIMER_STORAGE_KEY } from "@/lib/focusTimerStorage";
+import { queueReminderBackupSync } from "@/lib/reminderSync";
 import ChoicePicker from "@/components/ChoicePicker";
 import { localDateKey } from "@/lib/habits";
 import type { FocusSessionRecord, SubjectRecord, TaskRecord } from "@/types/records";
@@ -19,7 +21,6 @@ type TimerState = {
   startedAt: string;
 };
 
-const TIMER_STORAGE_KEY = "student-tracker-focus-timer";
 const PRESETS = [
   { label: "25 / 5 min", focusSeconds: 25 * 60, breakSeconds: 5 * 60 },
   { label: "50 / 10 min", focusSeconds: 50 * 60, breakSeconds: 10 * 60 },
@@ -87,10 +88,10 @@ export default function FocusTimer() {
         setSessions(nextSessions.sort((left, right) => right.endedAt.localeCompare(left.endedAt)));
         let storedTimer: unknown = null;
         try {
-          const stored = window.localStorage.getItem(TIMER_STORAGE_KEY);
+          const stored = window.localStorage.getItem(FOCUS_TIMER_STORAGE_KEY);
           storedTimer = stored ? JSON.parse(stored) as unknown : null;
         } catch {
-          try { window.localStorage.removeItem(TIMER_STORAGE_KEY); } catch { /* Storage may be disabled by the browser. */ }
+          try { window.localStorage.removeItem(FOCUS_TIMER_STORAGE_KEY); } catch { /* Storage may be disabled by the browser. */ }
         }
         if (isTimerState(storedTimer) && nextTasks.some((task) => task.id === storedTimer.taskId)) {
           const restored: TimerState = storedTimer.running && storedTimer.endsAt !== null
@@ -99,7 +100,7 @@ export default function FocusTimer() {
           setTimer(restored);
           setSelectedTaskId(restored.taskId);
         } else if (storedTimer !== null) {
-          try { window.localStorage.removeItem(TIMER_STORAGE_KEY); } catch { /* Storage may be disabled by the browser. */ }
+          try { window.localStorage.removeItem(FOCUS_TIMER_STORAGE_KEY); } catch { /* Storage may be disabled by the browser. */ }
           setNotice("The previous timer was cleared because its task is no longer available.");
         }
         setError("");
@@ -116,12 +117,16 @@ export default function FocusTimer() {
   useEffect(() => {
     if (!hydrated) return;
     try {
-      if (timer) window.localStorage.setItem(TIMER_STORAGE_KEY, JSON.stringify(timer));
-      else window.localStorage.removeItem(TIMER_STORAGE_KEY);
+      if (timer) window.localStorage.setItem(FOCUS_TIMER_STORAGE_KEY, JSON.stringify(timer));
+      else window.localStorage.removeItem(FOCUS_TIMER_STORAGE_KEY);
     } catch {
       // IndexedDB still records completed sessions if local timer recovery is unavailable.
     }
   }, [hydrated, timer]);
+
+  useEffect(() => {
+    if (hydrated) queueReminderBackupSync();
+  }, [hydrated, timer?.mode, timer?.taskId, timer?.running, timer?.startedAt, timer?.endsAt]);
 
   const finishFocus = useCallback(async (snapshot: TimerState, remainingSeconds: number) => {
     if (completionHandled.current) return;
@@ -283,7 +288,7 @@ export default function FocusTimer() {
 
           <label htmlFor="focus-preset" className="mt-5 block text-sm font-medium">Focus and break length</label>
           <ChoicePicker id="focus-preset" value={String(presetIndex)} disabled={Boolean(timer)} options={PRESETS.map((preset, index) => ({ value: String(index), label: preset.label, marker: "◷", description: `${preset.focusSeconds / 60} minute focus session` }))} onChange={(value) => setPresetIndex(Number(value))} />
-          <p className="mt-4 text-xs leading-5 text-muted">Timer progress is saved on this device, so you can leave the page and return. Only focus time is counted; breaks are not.</p>
+          <p className="mt-4 text-xs leading-5 text-muted">Timer progress is saved on this device. With push enabled, a running focus block also syncs so you can get an alert when it ends. Only focus time is counted; breaks are not.</p>
         </section>
       </div>
 

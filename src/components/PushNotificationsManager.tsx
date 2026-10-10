@@ -4,12 +4,16 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase/client";
+import { syncReminderBackupNow } from "@/lib/reminderSync";
+import { defaultReminderSettings, getReminderSettings, saveReminderSettings } from "@/lib/reminderSettings";
+import type { ReminderScheduleSettings } from "@/types/reminders";
 
 type Feedback = { type: "error" | "success" | "info"; text: string };
 type SerializedSubscription = {
   endpoint: string;
   keys?: { p256dh?: string; auth?: string };
 };
+type ReminderTimeKey = Exclude<keyof ReminderScheduleSettings, "timeZone">;
 
 const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
 
@@ -39,6 +43,7 @@ export default function PushNotificationsManager() {
   const [iosInstallNeeded, setIosInstallNeeded] = useState(false);
   const [working, setWorking] = useState(false);
   const [feedback, setFeedback] = useState<Feedback | null>(null);
+  const [reminderSettings, setReminderSettings] = useState<ReminderScheduleSettings>(defaultReminderSettings);
   const configured = isSupabaseConfigured();
 
   const refreshSubscription = useCallback(async () => {
@@ -54,8 +59,9 @@ export default function PushNotificationsManager() {
     setSupported(canPush);
     setIosDevice(isIOS());
     setIosInstallNeeded(isIOS() && !isInstalled());
+    setReminderSettings(getReminderSettings());
     if (!canPush) return;
-    void refreshSubscription().catch(() => setFeedback({ type: "error", text: "Push notification status could not be checked." }));
+    void refreshSubscription().then(() => syncReminderBackupNow()).catch(() => setFeedback({ type: "error", text: "Push status was checked, but the planner could not sync for background reminders. Check your connection and sign-in." }));
 
     const supabase = getSupabaseBrowserClient();
     if (!supabase) return;
@@ -71,6 +77,16 @@ export default function PushNotificationsManager() {
       listener.subscription.unsubscribe();
     };
   }, [refreshSubscription]);
+
+  function changeReminderTime(key: ReminderTimeKey, value: string) {
+    const next = saveReminderSettings({ ...reminderSettings, [key]: value });
+    setReminderSettings(next);
+    void syncReminderBackupNow().then(() => {
+      setFeedback({ type: "success", text: "Reminder time saved. It will sync to background notifications when push is enabled." });
+    }).catch(() => {
+      setFeedback({ type: "error", text: "Reminder time is saved on this device, but could not sync to your account. Check your connection and sign-in." });
+    });
+  }
 
   async function saveSubscription(activeUser: User, activeSubscription: PushSubscription) {
     const supabase = getSupabaseBrowserClient();
@@ -120,7 +136,12 @@ export default function PushNotificationsManager() {
         });
       await saveSubscription(user, activeSubscription);
       setSubscription(activeSubscription);
-      setFeedback({ type: "success", text: "Push reminders are enabled for this browser and linked to your private account." });
+      try {
+        await syncReminderBackupNow();
+        setFeedback({ type: "success", text: "Push notifications are enabled. Planner changes will sync automatically for background reminders." });
+      } catch {
+        setFeedback({ type: "error", text: "Push is enabled, but the planner could not sync for background reminders. Check your connection and sign-in." });
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : "Push reminders could not be enabled.";
       setFeedback({ type: "error", text: message.includes("push_subscriptions") ? "Run the push subscription SQL setup in Supabase, then try again." : message });
@@ -178,7 +199,7 @@ export default function PushNotificationsManager() {
         <div className="min-w-0">
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-accent">Optional · device reminders</p>
           <h2 id="push-heading" className="mt-1 text-xl font-semibold">Push notifications</h2>
-          <p className="mt-2 max-w-xl text-sm leading-6 text-muted">While the planner is open, reminders appear here from this device’s saved schedule. When it is closed, enabled push notifications deliver them as device alerts; upload your latest planner in Sync across devices after changes. On iPhone or iPad, use the Home Screen app from Safari on iOS/iPadOS 16.4 or later. A day-before alert is automatic, with an optional 10-minute, 30-minute, or 1-hour heads-up.</p>
+          <p className="mt-2 max-w-xl text-sm leading-6 text-muted">Tasks, classes, events, and exams use their saved schedules. Daily habits, routines, and streak nudges use the times below. A running focus timer can also alert you when it ends. With push enabled, this browser automatically uploads planner changes to your private account so reminders can arrive while the app is closed. On iPhone or iPad, use the Home Screen app from Safari on iOS/iPadOS 16.4 or later.</p>
         </div>
         <span className={`rounded-full px-3 py-1 text-xs font-semibold ${subscription ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : "bg-accent/10 text-accent"}`}>
           {subscription ? "Enabled" : supported ? "Not enabled" : "Unavailable"}
@@ -196,6 +217,22 @@ export default function PushNotificationsManager() {
           <button type="button" onClick={() => void disableNotifications()} disabled={working || !user} className="min-h-11 rounded-xl border border-border bg-background px-4 text-sm font-semibold text-foreground disabled:cursor-wait disabled:opacity-50">Turn off</button>
         </>}
       </div>
+
+      <fieldset className="mt-5 rounded-2xl border border-border bg-background p-4 sm:p-5">
+        <legend className="px-1 text-sm font-semibold">Daily habit and routine reminders</legend>
+        <p className="mb-4 text-xs leading-5 text-muted">Times use {reminderSettings.timeZone}. A reminder is sent only when something is still unchecked.</p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {([
+            ["habitTime", "Habit check-in"],
+            ["morningRoutineTime", "Morning routine"],
+            ["nightRoutineTime", "Night routine"],
+            ["streakNudgeTime", "Streak nudge"],
+          ] as Array<[ReminderTimeKey, string]>).map(([key, label]) => <label key={key} className="flex min-h-12 items-center justify-between gap-3 rounded-xl border border-border bg-surface px-3 py-2 text-sm font-medium">
+            <span>{label}</span>
+            <input type="time" value={reminderSettings[key]} onChange={(event) => changeReminderTime(key, event.target.value)} className="min-h-9 rounded-lg border border-border bg-background px-2 text-sm tabular-nums outline-none focus:border-accent focus:ring-2 focus:ring-accent/20" aria-label={`${label} reminder time`} />
+          </label>)}
+        </div>
+      </fieldset>
 
       {feedback && <p role={feedback.type === "error" ? "alert" : "status"} className={`mt-4 rounded-xl px-4 py-3 text-sm font-medium ${feedback.type === "error" ? "bg-red-500/5 text-red-700 dark:text-red-300" : feedback.type === "info" ? "bg-background text-muted" : "bg-accent/10 text-foreground"}`}>{feedback.text}</p>}
     </section>

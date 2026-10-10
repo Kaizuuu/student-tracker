@@ -1,5 +1,8 @@
 import { createClient } from "@supabase/supabase-js";
 import * as webPush from "web-push";
+import { getForgivingStreak } from "@/lib/habits";
+import { defaultReminderSettings, parseReminderSettings } from "@/lib/reminderSettings";
+import type { ReminderScheduleSettings } from "@/types/reminders";
 
 export const runtime = "nodejs";
 
@@ -8,6 +11,10 @@ type BackupRecords = {
   classes: Array<{ id: string; subjectId: string | null; dayOfWeek: number; startTime: string; reminderMinutesBefore?: 10 | 30 | 60 | 1440 | null }>;
   calendarEntries: Array<{ id: string; kind: "exam" | "event"; title: string; startsAt: string; reminderMinutesBefore?: 10 | 30 | 60 | 1440 | null }>;
   subjects: Array<{ id: string; name: string }>;
+  habits?: Array<{ id: string; title: string }>;
+  habitCompletions?: Array<{ habitId: string; date: string }>;
+  routineItems?: Array<{ id: string; title: string; period: "morning" | "night" }>;
+  routineCompletions?: Array<{ itemId: string; date: string }>;
 };
 type Subscription = { endpoint: string; p256dh: string; auth: string };
 type Reminder = { key: string; title: string; body: string; url: string };
@@ -91,26 +98,37 @@ function reminderLeadLabel(minutes: number) {
   return minutes === 60 ? "1 hour" : `${minutes} minutes`;
 }
 
-function nextClassStart(classItem: BackupRecords["classes"][number], now: Date) {
-  const today = localDateKey(now, TIME_ZONE);
+function scheduleWindowIsOpen(time: string, now: Date, timeZone: string) {
+  const dateKey = localDateKey(now, timeZone);
+  const scheduled = zonedDateTime(dateKey, time, timeZone);
+  const elapsed = now.getTime() - scheduled.getTime();
+  return elapsed >= 0 && elapsed < REMINDER_WINDOW_MINUTES * 60_000;
+}
+
+function nextClassStart(classItem: BackupRecords["classes"][number], now: Date, timeZone = TIME_ZONE) {
+  const today = localDateKey(now, timeZone);
   for (let dayOffset = 0; dayOffset <= 7; dayOffset += 1) {
     const dateKey = dateKeyAfter(today, dayOffset);
     if (dayOfWeek(dateKey) !== classItem.dayOfWeek) continue;
-    const startsAt = zonedDateTime(dateKey, classItem.startTime, TIME_ZONE);
+    const startsAt = zonedDateTime(dateKey, classItem.startTime, timeZone);
     if (startsAt > now) return startsAt;
   }
   return null;
 }
 
-function isBackup(value: unknown): value is { app: "student-tracker"; records: BackupRecords } {
+function isBackup(value: unknown): value is { app: "student-tracker"; records: BackupRecords; reminderSettings?: unknown; focusTimer?: unknown } {
   if (typeof value !== "object" || value === null) return false;
   const backup = value as { app?: unknown; records?: unknown };
   if (backup.app !== "student-tracker" || typeof backup.records !== "object" || backup.records === null) return false;
   const records = backup.records as Record<string, unknown>;
-  return ["tasks", "classes", "calendarEntries", "subjects"].every((key) => Array.isArray(records[key]));
+  return ["tasks", "classes", "calendarEntries", "subjects"].every((key) => Array.isArray(records[key])) &&
+    ["habits", "habitCompletions", "routineItems", "routineCompletions"].every((key) => records[key] === undefined || Array.isArray(records[key]));
 }
 
-function remindersForBackup(records: BackupRecords, now: Date, dateKey: string): Reminder[] {
+function remindersForBackup(records: BackupRecords, now: Date, rawSettings?: unknown, rawFocusTimer?: unknown): Reminder[] {
+  const fallbackSettings: ReminderScheduleSettings = { ...defaultReminderSettings(), timeZone: TIME_ZONE };
+  const settings = rawSettings === undefined ? fallbackSettings : parseReminderSettings(rawSettings);
+  const dateKey = localDateKey(now, settings.timeZone);
   const reminders: Reminder[] = [];
   const todayWeekday = dayOfWeek(dateKey);
   const subjectNames = new Map(records.subjects.map((subject) => [subject.id, subject.name]));
@@ -146,7 +164,7 @@ function remindersForBackup(records: BackupRecords, now: Date, dateKey: string):
 
   for (const classItem of records.classes) {
     if (!classItem || typeof classItem.id !== "string" || !Number.isInteger(classItem.dayOfWeek) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(classItem.startTime)) continue;
-    const startsAt = nextClassStart(classItem, now);
+    const startsAt = nextClassStart(classItem, now, settings.timeZone);
     if (!startsAt) continue;
     const subject = classItem.subjectId ? subjectNames.get(classItem.subjectId) : undefined;
     const classLabel = subject ? `${subject} class` : "Class";
@@ -161,7 +179,7 @@ function remindersForBackup(records: BackupRecords, now: Date, dateKey: string):
     }
   }
 
-  if (localHour(now, TIME_ZONE) === SUMMARY_HOUR) {
+  if (localHour(now, settings.timeZone) === SUMMARY_HOUR) {
     const todayItems: Array<{ sort: string; label: string }> = [];
     for (const task of records.tasks) {
       if (!task || typeof task.id !== "string" || typeof task.title !== "string" || task.completedAt || !task.dueAt) continue;
@@ -191,6 +209,63 @@ function remindersForBackup(records: BackupRecords, now: Date, dateKey: string):
         body: threeThings.join(" · "),
         url: "/",
       });
+    }
+  }
+
+  const habits = records.habits ?? [];
+  const habitCompletions = records.habitCompletions ?? [];
+  const checkedToday = new Set(habitCompletions.filter((entry) => entry.date === dateKey).map((entry) => entry.habitId));
+  const pendingHabits = habits.filter((habit) => !checkedToday.has(habit.id));
+  if (pendingHabits.length && scheduleWindowIsOpen(settings.habitTime, now, settings.timeZone)) {
+    const names = pendingHabits.slice(0, 3).map((habit) => habit.title).join(", ");
+    reminders.push({
+      key: `habit-checkin:${dateKey}`,
+      title: "Habit check-in",
+      body: `${pendingHabits.length} habit${pendingHabits.length === 1 ? "" : "s"} still to check off${names ? `: ${names}` : ""}.`,
+      url: "/habits",
+    });
+  }
+
+  const routineItems = records.routineItems ?? [];
+  const routineCompletions = records.routineCompletions ?? [];
+  for (const period of ["morning", "night"] as const) {
+    const pending = routineItems.filter((item) => item.period === period && !routineCompletions.some((entry) => entry.itemId === item.id && entry.date === dateKey));
+    const time = period === "morning" ? settings.morningRoutineTime : settings.nightRoutineTime;
+    if (!pending.length || !scheduleWindowIsOpen(time, now, settings.timeZone)) continue;
+    reminders.push({
+      key: `routine:${period}:${dateKey}`,
+      title: `${period === "morning" ? "Morning" : "Night"} routine`,
+      body: `${pending.length} step${pending.length === 1 ? "" : "s"} left to check off.`,
+      url: "/routines",
+    });
+  }
+
+  const streakHabits = pendingHabits.filter((habit) => getForgivingStreak(
+    habitCompletions.filter((entry) => entry.habitId === habit.id).map((entry) => entry.date),
+    dateKey,
+  ) > 0);
+  if (streakHabits.length && scheduleWindowIsOpen(settings.streakNudgeTime, now, settings.timeZone)) {
+    reminders.push({
+      key: `streak-nudge:${dateKey}`,
+      title: "Keep your habit streak going",
+      body: `Check in on ${streakHabits.slice(0, 3).map((habit) => habit.title).join(", ")} today.`,
+      url: "/habits",
+    });
+  }
+
+  if (typeof rawFocusTimer === "object" && rawFocusTimer !== null) {
+    const timer = rawFocusTimer as { taskId?: unknown; startedAt?: unknown; endsAt?: unknown };
+    if (typeof timer.taskId === "string" && typeof timer.startedAt === "string" && typeof timer.endsAt === "string") {
+      const endsAt = new Date(timer.endsAt);
+      const task = records.tasks.find((candidate) => candidate.id === timer.taskId);
+      if (reminderWindowIsOpen(endsAt, 0, now)) {
+        reminders.push({
+          key: `focus:${timer.startedAt}`,
+          title: "Focus block complete",
+          body: task ? `Your focus block for ${task.title} is complete. Time for a short break.` : "Your focus block is complete. Time for a short break.",
+          url: "/focus",
+        });
+      }
     }
   }
 
@@ -269,7 +344,6 @@ export async function GET(request: Request) {
     }
 
     const now = new Date();
-    const dateKey = localDateKey(now, TIME_ZONE);
     let delivered = 0;
     let skipped = 0;
     let usersChecked = 0;
@@ -277,7 +351,7 @@ export async function GET(request: Request) {
       const userSubscriptions = subscriptionsByUser.get(backup.user_id) ?? [];
       if (!userSubscriptions.length || !isBackup(backup.data)) continue;
       usersChecked += 1;
-      for (const reminder of remindersForBackup(backup.data.records, now, dateKey)) {
+      for (const reminder of remindersForBackup(backup.data.records, now, backup.data.reminderSettings, backup.data.focusTimer)) {
         const result = await sendOnce(supabase, backup.user_id, userSubscriptions, reminder);
         delivered += result.delivered;
         skipped += result.skipped;

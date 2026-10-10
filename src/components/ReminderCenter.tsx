@@ -3,7 +3,10 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { getRecords } from "@/lib/db";
-import type { CalendarEntryRecord, ClassRecord, TaskRecord } from "@/types/records";
+import { getReminderSettings } from "@/lib/reminderSettings";
+import { syncReminderBackupNow } from "@/lib/reminderSync";
+import { getForgivingStreak, localDateKey } from "@/lib/habits";
+import type { CalendarEntryRecord, ClassRecord, HabitCompletionRecord, HabitRecord, RoutineCompletionRecord, RoutineItemRecord, TaskRecord } from "@/types/records";
 
 type InAppReminder = { key: string; title: string; body: string; url: string };
 
@@ -24,6 +27,12 @@ function leadLabel(minutes: number) {
 function windowIsOpen(startsAt: Date, offset: number, now: Date) {
   const minutesUntil = (startsAt.getTime() - now.getTime()) / 60_000;
   return Number.isFinite(minutesUntil) && minutesUntil > offset - REMINDER_WINDOW_MINUTES && minutesUntil <= offset;
+}
+
+function dailyWindowIsOpen(time: string, now: Date) {
+  const [hours, minutes] = time.split(":").map(Number);
+  const scheduled = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes);
+  return now >= scheduled && now.getTime() < scheduled.getTime() + 6 * 60_000;
 }
 
 function getNextClassStart(classItem: ClassRecord[], now: Date) {
@@ -91,13 +100,19 @@ export default function ReminderCenter() {
     async function checkLocalReminders() {
       if (document.visibilityState !== "visible") return;
       try {
-        const [tasks, classes, entries, subjects] = await Promise.all([
+        const [tasks, classes, entries, subjects, habits, habitCompletions, routineItems, routineCompletions] = await Promise.all([
           getRecords("tasks"),
           getRecords("classes"),
           getRecords("calendarEntries"),
           getRecords("subjects"),
+          getRecords("habits"),
+          getRecords("habitCompletions"),
+          getRecords("routineItems"),
+          getRecords("routineCompletions"),
         ]);
         const now = new Date();
+        const today = localDateKey(now);
+        const settings = getReminderSettings();
 
         function addIfDue(key: string, title: string, body: string, url: string, startsAt: Date, offset: number) {
           if (windowIsOpen(startsAt, offset, now)) showReminder({ key, title, body, url });
@@ -130,19 +145,68 @@ export default function ReminderCenter() {
             addIfDue(`class:${item.id}:${startsAt.toISOString()}:before:${offset}`, "Class reminder", `${classLabel} starts in ${leadLabel(offset)}.`, "/classes", startsAt, offset);
           }
         }
+
+        const habitRecords = habits as HabitRecord[];
+        const habitCheckins = habitCompletions as HabitCompletionRecord[];
+        const checkedHabits = new Set(habitCheckins.filter((entry) => entry.date === today).map((entry) => entry.habitId));
+        const pendingHabits = habitRecords.filter((habit) => !checkedHabits.has(habit.id));
+        if (pendingHabits.length && dailyWindowIsOpen(settings.habitTime, now)) {
+          const names = pendingHabits.slice(0, 3).map((habit) => habit.title).join(", ");
+          showReminder({
+            key: `habit-checkin:${today}`,
+            title: "Habit check-in",
+            body: `${pendingHabits.length} habit${pendingHabits.length === 1 ? "" : "s"} still to check off${names ? `: ${names}` : ""}.`,
+            url: "/habits",
+          });
+        }
+
+        const routineRecords = routineItems as RoutineItemRecord[];
+        const routineCheckins = routineCompletions as RoutineCompletionRecord[];
+        for (const period of ["morning", "night"] as const) {
+          const pending = routineRecords.filter((item) => item.period === period && !routineCheckins.some((entry) => entry.itemId === item.id && entry.date === today));
+          const time = period === "morning" ? settings.morningRoutineTime : settings.nightRoutineTime;
+          if (!pending.length || !dailyWindowIsOpen(time, now)) continue;
+          showReminder({
+            key: `routine:${period}:${today}`,
+            title: `${period === "morning" ? "Morning" : "Night"} routine`,
+            body: `${pending.length} step${pending.length === 1 ? "" : "s"} left to check off.`,
+            url: "/routines",
+          });
+        }
+
+        const streakHabits = pendingHabits.filter((habit) => getForgivingStreak(
+          habitCheckins.filter((entry) => entry.habitId === habit.id).map((entry) => entry.date),
+          today,
+        ) > 0);
+        if (streakHabits.length && dailyWindowIsOpen(settings.streakNudgeTime, now)) {
+          showReminder({
+            key: `streak-nudge:${today}`,
+            title: "Keep your habit streak going",
+            body: `Check in on ${streakHabits.slice(0, 3).map((habit) => habit.title).join(", ")} today.`,
+            url: "/habits",
+          });
+        }
       } catch {
         // Push reminders remain available even if local planner data cannot be read.
       }
     }
 
     navigator.serviceWorker?.addEventListener("message", onServiceWorkerMessage);
+    const retryReminderSync = () => void syncReminderBackupNow().catch(() => {
+      // The next app launch or network connection retries the background schedule upload.
+    });
+    window.addEventListener("online", retryReminderSync);
+    retryReminderSync();
     void checkLocalReminders();
     const interval = window.setInterval(() => void checkLocalReminders(), CHECK_INTERVAL_MS);
     document.addEventListener("visibilitychange", checkLocalReminders);
+    window.addEventListener("student-tracker-reminder-settings", checkLocalReminders);
     return () => {
       navigator.serviceWorker?.removeEventListener("message", onServiceWorkerMessage);
+      window.removeEventListener("online", retryReminderSync);
       window.clearInterval(interval);
       document.removeEventListener("visibilitychange", checkLocalReminders);
+      window.removeEventListener("student-tracker-reminder-settings", checkLocalReminders);
     };
   }, []);
 

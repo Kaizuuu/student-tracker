@@ -4,6 +4,7 @@ import { useRef, useState, type ChangeEvent } from "react";
 import { importBackupRecords } from "@/lib/db";
 import ChoicePicker from "@/components/ChoicePicker";
 import { createBackup, MAX_BACKUP_FILE_BYTES, parseBackup } from "@/lib/backup";
+import { saveReminderSettings } from "@/lib/reminderSettings";
 import type { BackupImportMode } from "@/types/backup";
 
 function countSummary(counts: {
@@ -96,6 +97,7 @@ export default function BackupManager() {
       }
 
       const counts = await importBackupRecords(backup.records, mode);
+      if (backup.reminderSettings) saveReminderSettings(backup.reminderSettings);
       const verb = mode === "replace" ? "Restored" : "Imported";
       setFeedback({ type: "success", text: `${verb} ${countSummary(counts)}.` });
     } catch (error) {

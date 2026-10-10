@@ -1,5 +1,7 @@
 import { getBackupRecords } from "@/lib/db";
 import type { StudentTrackerBackup, StudentTrackerBackupRecords } from "@/types/backup";
+import { getReminderSettings, isReminderTime, parseReminderSettings } from "@/lib/reminderSettings";
+import { readRunningFocusTimer } from "@/lib/focusTimerStorage";
 import type { CalendarEntryKind, ReminderMinutesBefore, RoutinePeriod, TaskPriority } from "@/types/records";
 
 export const MAX_BACKUP_FILE_BYTES = 10 * 1024 * 1024;
@@ -77,11 +79,14 @@ function uniqueIds<T extends { id: string }>(records: T[], label: string) {
 }
 
 export async function createBackup(): Promise<StudentTrackerBackup> {
+  const focusTimer = readRunningFocusTimer();
   return {
     app: "student-tracker",
     formatVersion: 4,
     exportedAt: new Date().toISOString(),
     records: await getBackupRecords(),
+    ...(typeof window === "undefined" ? {} : { reminderSettings: getReminderSettings() }),
+    ...(focusTimer ? { focusTimer } : {}),
   };
 }
 
@@ -296,10 +301,32 @@ export function parseBackup(text: string): StudentTrackerBackup {
     if (new Set(positions).size !== positions.length) throw new Error(`Backup ${period} routine contains duplicate item positions.`);
   }
 
+  let reminderSettings: StudentTrackerBackup["reminderSettings"];
+  if (value.reminderSettings !== undefined) {
+    if (!isObject(value.reminderSettings)) throw new Error("Backup reminderSettings must be an object.");
+    const rawSettings = value.reminderSettings;
+    if (["habitTime", "morningRoutineTime", "nightRoutineTime", "streakNudgeTime"].some((key) => !isReminderTime(rawSettings[key]))) {
+      throw new Error("Backup reminderSettings contains an invalid time.");
+    }
+    reminderSettings = parseReminderSettings(rawSettings);
+  }
+
+  let focusTimer: StudentTrackerBackup["focusTimer"];
+  if (value.focusTimer !== undefined) {
+    if (!isObject(value.focusTimer) || typeof value.focusTimer.taskId !== "string" || !value.focusTimer.taskId ||
+      typeof value.focusTimer.startedAt !== "string" || Number.isNaN(Date.parse(value.focusTimer.startedAt)) ||
+      typeof value.focusTimer.endsAt !== "string" || Number.isNaN(Date.parse(value.focusTimer.endsAt))) {
+      throw new Error("Backup focusTimer is invalid.");
+    }
+    focusTimer = { taskId: value.focusTimer.taskId, startedAt: value.focusTimer.startedAt, endsAt: value.focusTimer.endsAt };
+  }
+
   return {
     app: "student-tracker",
     formatVersion: value.formatVersion,
     exportedAt,
     records,
+    ...(reminderSettings ? { reminderSettings } : {}),
+    ...(focusTimer ? { focusTimer } : {}),
   };
 }

@@ -17,6 +17,17 @@ import type { BackupImportMode, StudentTrackerBackupRecords } from "@/types/back
 const DATABASE_NAME = "student-tracker";
 const DATABASE_VERSION = 4;
 
+function queueReminderBackupSync() {
+  void import("@/lib/reminderSync").then(({ queueReminderBackupSync: queue }) => queue()).catch(() => {
+    // Local saves must not fail if the optional push sync is unavailable.
+  });
+}
+
+function affectsReminders(storeName: StoreName) {
+  return storeName === "tasks" || storeName === "classes" || storeName === "calendarEntries" || storeName === "subjects" ||
+    storeName === "habits" || storeName === "habitCompletions" || storeName === "routineItems" || storeName === "routineCompletions";
+}
+
 interface StudentTrackerDB extends DBSchema {
   subjects: {
     key: string;
@@ -171,6 +182,7 @@ export async function addRecord<Store extends StoreName>(
   } as RecordFor<Store>;
 
   await (await getDatabase()).put(storeName, record);
+  if (affectsReminders(storeName)) queueReminderBackupSync();
   return record;
 }
 
@@ -261,6 +273,7 @@ export async function importBackupRecords(
 
   await Promise.all([...clears, ...writes]);
   await transaction.done;
+  queueReminderBackupSync();
   return {
     subjects: records.subjects.length,
     classes: records.classes.length,
@@ -300,6 +313,7 @@ export async function updateRecord<Store extends StoreName>(
 
   await transaction.store.put(updated);
   await transaction.done;
+  if (affectsReminders(storeName)) queueReminderBackupSync();
   return updated;
 }
 
@@ -337,6 +351,7 @@ export async function moveOverdueTaskToTomorrow(taskId: string, now = new Date()
   };
   await store.put(updated);
   await transaction.done;
+  queueReminderBackupSync();
   return updated;
 }
 
@@ -356,12 +371,14 @@ export async function rescheduleAllOverdueTasksToTomorrow(now = new Date()): Pro
     updatedAt,
   })));
   await transaction.done;
+  if (overdue.length) queueReminderBackupSync();
   return overdue.length;
 }
 
 /** Deletes a record by id. */
 export async function deleteRecord<Store extends StoreName>(storeName: Store, id: string): Promise<void> {
   await (await getDatabase()).delete(storeName, id);
+  if (affectsReminders(storeName)) queueReminderBackupSync();
 }
 
 /** Checks or unchecks one habit for a local calendar date. */
@@ -385,16 +402,19 @@ export async function toggleHabitCompletion(
     if ((existing.version ?? "full") === version) {
       await store.delete(id);
       await transaction.done;
+      queueReminderBackupSync();
       return "unchecked";
     }
     await store.put({ ...existing, version, updatedAt: new Date().toISOString() });
     await transaction.done;
+    queueReminderBackupSync();
     return "changed";
   }
 
   const now = new Date().toISOString();
   await store.put({ id, habitId, date, version, createdAt: now, updatedAt: now });
   await transaction.done;
+  queueReminderBackupSync();
   return "checked";
 }
 
@@ -416,6 +436,7 @@ export async function deleteHabit(habitId: string): Promise<boolean> {
     ...history.map((completion) => completions.delete(completion.id)),
   ]);
   await transaction.done;
+  queueReminderBackupSync();
   return true;
 }
 
@@ -435,12 +456,14 @@ export async function toggleRoutineCompletion(itemId: string, date: string): Pro
   if (existing) {
     await store.delete(id);
     await transaction.done;
+    queueReminderBackupSync();
     return false;
   }
 
   const now = new Date().toISOString();
   await store.put({ id, itemId, date, createdAt: now, updatedAt: now });
   await transaction.done;
+  queueReminderBackupSync();
   return true;
 }
 
@@ -467,6 +490,7 @@ export async function deleteRoutineItem(itemId: string): Promise<boolean> {
     ...siblings.map((sibling, position) => items.put({ ...sibling, position, updatedAt: now })),
   ]);
   await transaction.done;
+  queueReminderBackupSync();
   return true;
 }
 
@@ -494,12 +518,14 @@ export async function moveRoutineItem(itemId: string, direction: -1 | 1): Promis
   const now = new Date().toISOString();
   await Promise.all(items.map((candidate, position) => store.put({ ...candidate, position, updatedAt: now })));
   await transaction.done;
+  queueReminderBackupSync();
   return true;
 }
 
 /** Removes every record from a single store. */
 export async function clearStore(storeName: StoreName): Promise<void> {
   await (await getDatabase()).clear(storeName);
+  if (affectsReminders(storeName)) queueReminderBackupSync();
 }
 
 export interface SubjectDeletionSummary {
@@ -545,6 +571,8 @@ export async function deleteSubject(subjectId: string): Promise<SubjectDeletionS
   ]);
   await transaction.done;
 
+  queueReminderBackupSync();
+
   return {
     classes: linkedClasses.length,
     tasks: linkedTasks.length,
@@ -576,5 +604,6 @@ export async function deleteTask(taskId: string): Promise<number> {
     tasks.delete(taskId),
   ]);
   await transaction.done;
+  queueReminderBackupSync();
   return linkedSubtasks.length;
 }
