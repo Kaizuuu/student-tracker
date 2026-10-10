@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
+import { CalendarDays, CalendarRange, ChartNoAxesColumnIncreasing, Check, Ellipsis, GraduationCap, ListChecks, ListTodo, Timer } from "lucide-react";
 import ThemeToggle from "@/components/ThemeToggle";
 import QuickAdd from "@/components/QuickAdd";
 import PwaInstallProvider from "@/components/PwaInstallProvider";
@@ -33,40 +34,22 @@ const desktopGroups = [
 
 type NavigationIcon = (typeof tabs)[number]["icon"] | (typeof desktopLinks)[number]["icon"];
 
-function TabIcon({ name }: { name: NavigationIcon }) {
-  const shared = {
-    "aria-hidden": true as const,
-    className: "size-[1.35rem]",
-    fill: "none",
-    stroke: "currentColor",
-    strokeLinecap: "round" as const,
-    strokeLinejoin: "round" as const,
-    strokeWidth: 1.8,
-    viewBox: "0 0 24 24",
-  };
+const navigationIcons = {
+  today: CalendarDays,
+  tasks: ListChecks,
+  classes: GraduationCap,
+  more: Ellipsis,
+  calendar: CalendarRange,
+  events: CalendarDays,
+  focus: Timer,
+  habits: Check,
+  routines: ListTodo,
+  review: ChartNoAxesColumnIncreasing,
+} satisfies Record<NavigationIcon, typeof CalendarDays>;
 
-  switch (name) {
-    case "today":
-      return <svg {...shared}><rect x="3.5" y="5" width="17" height="15.5" rx="3" /><path d="M8 3.5v3M16 3.5v3M3.5 9.5h17M8 13h.01M12 13h.01M16 13h.01M8 16.5h.01M12 16.5h.01" /></svg>;
-    case "tasks":
-      return <svg {...shared}><path d="M9 6h11M9 12h11M9 18h11" /><path d="m3.5 6 .8.8L6 5M3.5 12l.8.8 1.7-1.8M3.5 18l.8.8 1.7-1.8" /></svg>;
-    case "classes":
-      return <svg {...shared}><path d="m3 8 9-4 9 4-9 4-9-4Z" /><path d="M6 9.5v5.2c3.7 2.8 8.3 2.8 12 0V9.5M21 8v7" /></svg>;
-    case "more":
-      return <svg {...shared}><circle cx="5" cy="12" r="1" /><circle cx="12" cy="12" r="1" /><circle cx="19" cy="12" r="1" /></svg>;
-    case "calendar":
-      return <svg {...shared}><rect x="3.5" y="5" width="17" height="15.5" rx="3" /><path d="M8 3.5v3M16 3.5v3M3.5 9.5h17M8 13h.01M12 13h.01M16 13h.01M8 16.5h.01M12 16.5h.01" /></svg>;
-    case "events":
-      return <svg {...shared}><path d="M7 3.5v3M17 3.5v3M4 9h16M5.5 5h13A1.5 1.5 0 0 1 20 6.5v12A1.5 1.5 0 0 1 18.5 20h-13A1.5 1.5 0 0 1 4 18.5v-12A1.5 1.5 0 0 1 5.5 5Z" /><path d="M8 13h3M8 16h6" /></svg>;
-    case "focus":
-      return <svg {...shared}><circle cx="12" cy="12" r="8.5" /><path d="M12 7v5l3.5 2M12 2v2M22 12h-2" /></svg>;
-    case "habits":
-      return <svg {...shared}><path d="m5 12.5 4.2 4.2L19.5 6.8" /></svg>;
-    case "routines":
-      return <svg {...shared}><path d="M5 6h14M5 12h14M5 18h14" /><circle cx="3" cy="6" r=".5" /><circle cx="3" cy="12" r=".5" /><circle cx="3" cy="18" r=".5" /></svg>;
-    case "review":
-      return <svg {...shared}><path d="M4 19V5M4 19h16M7 15l4-4 3 2 5-6" /><path d="M16 7h3v3" /></svg>;
-  }
+function TabIcon({ name }: { name: NavigationIcon }) {
+  const Icon = navigationIcons[name];
+  return <Icon aria-hidden="true" className="size-[1.35rem]" strokeWidth={1.8} />;
 }
 
 export default function AppShell({ children }: { children: ReactNode }) {

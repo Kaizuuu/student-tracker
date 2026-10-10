@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Moon, Sun } from "lucide-react";
 
 type Theme = "light" | "dark";
 
@@ -43,7 +44,7 @@ export default function ThemeToggle() {
       title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
       className="flex size-11 items-center justify-center rounded-xl border border-border bg-surface text-foreground transition-colors hover:bg-background focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
     >
-      <span aria-hidden="true" className="text-lg leading-none">{theme === "dark" ? "☼" : "☾"}</span>
+      {theme === "dark" ? <Sun aria-hidden="true" className="size-5" strokeWidth={1.8} /> : <Moon aria-hidden="true" className="size-5" strokeWidth={1.8} />}
     </button>
   );
 }

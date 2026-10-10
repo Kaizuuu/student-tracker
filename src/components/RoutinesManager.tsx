@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import { Check } from "lucide-react";
 import { addRecord, deleteRoutineItem, getRecords, moveRoutineItem, toggleRoutineCompletion, updateRecord } from "@/lib/db";
 import { localDateKey } from "@/lib/habits";
 import type { RoutineCompletionRecord, RoutineItemRecord, RoutinePeriod } from "@/types/records";
@@ -185,7 +186,7 @@ export default function RoutinesManager() {
                     <input id={`edit-routine-${item.id}`} value={editingTitle} onChange={(event) => setEditingTitle(event.target.value)} maxLength={100} className="min-h-11 min-w-0 flex-1 rounded-lg border border-border bg-surface px-3 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/20" />
                     <div className="flex justify-end gap-2"><button type="button" onClick={() => setEditingId(null)} className="min-h-10 rounded-lg px-3 text-sm text-muted hover:bg-surface">Cancel</button><button type="submit" disabled={!editingTitle.trim() || busy} className="min-h-10 rounded-lg bg-accent px-3 text-sm font-semibold text-accent-foreground disabled:opacity-50">Save</button></div>
                   </form> : <div className="flex items-center gap-2">
-                    <button type="button" role="checkbox" aria-checked={checked} aria-label={`${checked ? "Uncheck" : "Check off"} ${item.title}`} disabled={busy || !today} onClick={() => void toggleStep(item)} className={`flex size-10 shrink-0 items-center justify-center rounded-lg border-2 text-base font-bold transition-colors ${checked ? "border-accent bg-accent text-accent-foreground" : "border-border text-transparent hover:border-accent"}`}><span aria-hidden="true">✓</span></button>
+                    <button type="button" role="checkbox" aria-checked={checked} aria-label={`${checked ? "Uncheck" : "Check off"} ${item.title}`} disabled={busy || !today} onClick={() => void toggleStep(item)} className={`flex size-10 shrink-0 items-center justify-center rounded-lg border-2 transition-colors ${checked ? "border-accent bg-accent text-accent-foreground" : "border-border text-transparent hover:border-accent"}`}><Check aria-hidden="true" className="size-5" strokeWidth={2.4} /></button>
                     <span className={`min-w-0 flex-1 break-words text-sm font-medium ${checked ? "text-muted line-through" : ""}`}><span className="mr-2 text-xs tabular-nums text-muted">{index + 1}.</span>{item.title}</span>
                     <button type="button" disabled={busy || index === 0} onClick={() => void shiftStep(item, -1)} aria-label={`Move ${item.title} up`} className="min-h-9 min-w-9 rounded-lg text-lg text-muted hover:bg-surface disabled:opacity-30">↑</button>
                     <button type="button" disabled={busy || index === routineItems.length - 1} onClick={() => void shiftStep(item, 1)} aria-label={`Move ${item.title} down`} className="min-h-9 min-w-9 rounded-lg text-lg text-muted hover:bg-surface disabled:opacity-30">↓</button>

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { CalendarDays, Plus } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { addDays, format, isSameDay, parseISO, startOfDay, startOfWeek } from "date-fns";
 import { getRecords, moveOverdueTaskToTomorrow, rescheduleAllOverdueTasksToTomorrow } from "@/lib/db";
@@ -222,10 +223,10 @@ export default function TodayDashboard() {
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <Link href="/week" className="inline-flex min-h-11 items-center gap-2 rounded-full border border-border bg-surface px-4 text-sm font-semibold text-foreground shadow-sm transition-colors hover:border-accent/30 hover:bg-accent/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
-              <span aria-hidden="true" className="text-accent">▦</span>
+              <CalendarDays aria-hidden="true" className="size-4 text-accent" strokeWidth={1.8} />
               Weekly calendar
             </Link>
-            <Link href="/tasks" className="today-primary-action inline-flex min-h-11 items-center gap-2 rounded-full bg-accent px-5 text-sm font-semibold text-accent-foreground shadow-md shadow-accent/20 transition-all hover:-translate-y-0.5 hover:shadow-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"><span aria-hidden="true" className="text-lg leading-none">+</span>Add a task</Link>
+            <Link href="/tasks" className="today-primary-action inline-flex min-h-11 items-center gap-2 rounded-full bg-accent px-5 text-sm font-semibold text-accent-foreground shadow-md shadow-accent/20 transition-all hover:-translate-y-0.5 hover:shadow-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"><Plus aria-hidden="true" className="size-4" strokeWidth={2} />Add a task</Link>
           </div>
         </div>
         <ol aria-label="This week" className="today-date-strip mt-6 grid grid-cols-7 gap-2">

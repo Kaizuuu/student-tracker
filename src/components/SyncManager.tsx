@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { ArrowUpRight } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { createBackup, MAX_BACKUP_FILE_BYTES, parseBackup } from "@/lib/backup";
@@ -146,7 +147,7 @@ export default function SyncManager() {
     {!configured ? <div className="mt-5 rounded-2xl border border-dashed border-border bg-background p-4">
       <p className="text-sm font-semibold">Connect a Supabase project to enable sync</p>
       <p className="mt-1 text-sm leading-6 text-muted">Create a free project, add its URL and anon key to <code className="rounded bg-surface px-1.5 py-0.5 text-xs">.env.local</code>, then run the supplied SQL setup. The details are in the project setup guide.</p>
-      <Link href="https://supabase.com/dashboard" target="_blank" rel="noreferrer" className="mt-3 inline-flex min-h-10 items-center rounded-xl border border-border bg-surface px-3 text-sm font-semibold text-accent hover:bg-accent/5 focus-visible:outline-2 focus-visible:outline-accent">Open Supabase <span className="ml-2" aria-hidden="true">↗</span></Link>
+      <Link href="https://supabase.com/dashboard" target="_blank" rel="noreferrer" className="mt-3 inline-flex min-h-10 items-center rounded-xl border border-border bg-surface px-3 text-sm font-semibold text-accent hover:bg-accent/5 focus-visible:outline-2 focus-visible:outline-accent">Open Supabase <ArrowUpRight aria-hidden="true" className="ml-2 size-4" /></Link>
     </div> : loading ? <p className="mt-5 rounded-2xl bg-background px-4 py-5 text-sm text-muted">Checking your sync account…</p> : !user ? <div className="mt-5 rounded-2xl border border-border bg-background p-4">
       <p className="font-semibold">Sign in to sync</p>
       <p className="mt-1 text-sm leading-6 text-muted">Sign in to the account above to upload this device or restore a private cloud snapshot.</p>

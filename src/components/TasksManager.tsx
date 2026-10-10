@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { CircleCheck } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { addRecord, deleteRecord, deleteTask, getRecords, updateRecord } from "@/lib/db";
 import EntryWizard from "@/components/EntryWizard";
@@ -356,7 +357,7 @@ export default function TasksManager() {
           <p className="rounded-2xl border border-border bg-surface px-5 py-6 text-sm text-muted">Loading your tasks…</p>
         ) : visibleTasks.length === 0 ? (
           <div className="rounded-3xl border border-dashed border-border bg-surface px-6 py-10 text-center sm:px-10">
-            <span className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-background text-xl text-accent" aria-hidden="true">✓</span>
+            <span className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-background text-accent" aria-hidden="true"><CircleCheck className="size-6" strokeWidth={1.8} /></span>
             <h2 className="mt-5 text-lg font-semibold">{filter === "completed" ? "Nothing completed yet" : "You’re all caught up"}</h2>
             <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-muted">{filter === "completed" ? "Finished tasks will be collected here." : "New tasks you add will appear here."}</p>
             {filter === "open" && !formOpen && <button type="button" onClick={startCreate} className="mt-6 min-h-11 rounded-xl border border-border px-4 text-sm font-semibold hover:bg-background focus-visible:outline-2 focus-visible:outline-accent">Add your first task</button>}

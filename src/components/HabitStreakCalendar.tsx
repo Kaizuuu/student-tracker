@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { localDateKey } from "@/lib/habits";
 import type { HabitCompletionRecord, HabitRecord } from "@/types/records";
 
@@ -83,9 +84,9 @@ export default function HabitStreakCalendar({
           <p className="mt-1 text-sm text-muted">Darker days mean more habits checked off.</p>
         </div>
         <div className="flex items-center gap-1 rounded-xl bg-background p-1">
-          <button type="button" onClick={() => changeMonth(-1)} disabled={!month} aria-label="Previous month" className="min-h-10 min-w-10 rounded-lg text-lg text-muted hover:bg-surface disabled:opacity-40">‹</button>
+          <button type="button" onClick={() => changeMonth(-1)} disabled={!month} aria-label="Previous month" className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-lg text-muted hover:bg-surface disabled:opacity-40"><ChevronLeft aria-hidden="true" className="size-5" /></button>
           <p className="min-w-28 px-2 text-center text-sm font-semibold">{month?.toLocaleDateString(undefined, { month: "long", year: "numeric" }) ?? "Loading…"}</p>
-          <button type="button" onClick={() => changeMonth(1)} disabled={!month} aria-label="Next month" className="min-h-10 min-w-10 rounded-lg text-lg text-muted hover:bg-surface disabled:opacity-40">›</button>
+          <button type="button" onClick={() => changeMonth(1)} disabled={!month} aria-label="Next month" className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-lg text-muted hover:bg-surface disabled:opacity-40"><ChevronRight aria-hidden="true" className="size-5" /></button>
         </div>
       </div>
 

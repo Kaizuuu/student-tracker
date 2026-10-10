@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { getRecords } from "@/lib/db";
 import type { CalendarEntryRecord, ClassRecord, SubjectRecord, TaskRecord, TaskPriority } from "@/types/records";
@@ -248,12 +249,12 @@ export default function WeeklyCalendar() {
     <main className="calendar-page mx-auto w-full max-w-6xl space-y-4 px-4 py-5 sm:px-6 sm:py-7">
       <header className="calendar-toolbar rounded-2xl border border-border bg-surface p-4 shadow-sm sm:flex sm:items-center sm:justify-between sm:gap-4">
           <div className="flex min-w-0 items-center justify-between gap-3 sm:justify-start">
-          <button type="button" onClick={() => changeDate(-1)} className="min-h-11 min-w-11 rounded-xl border border-border text-xl text-muted hover:bg-background" aria-label="Previous date">‹</button>
+          <button type="button" onClick={() => changeDate(-1)} className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl border border-border text-muted hover:bg-background" aria-label="Previous date"><ChevronLeft aria-hidden="true" className="size-5" /></button>
           <div className="min-w-0 text-center sm:text-left">
             <h1 className="truncate text-lg font-bold sm:text-xl">{title}</h1>
             <button type="button" onClick={() => setSelectedDate(dayStart(new Date()))} className="mt-0.5 text-sm font-medium text-accent">Today</button>
           </div>
-          <button type="button" onClick={() => changeDate(1)} className="min-h-11 min-w-11 rounded-xl border border-border text-xl text-muted hover:bg-background" aria-label="Next date">›</button>
+          <button type="button" onClick={() => changeDate(1)} className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl border border-border text-muted hover:bg-background" aria-label="Next date"><ChevronRight aria-hidden="true" className="size-5" /></button>
         </div>
         <div className="mt-3 flex justify-center rounded-xl bg-background p-1 sm:mt-0" aria-label="Calendar view">
           {([["day", "Daily"], ["week", "Weekly"], ["month", "Monthly"]] as const).map(([value, label]) => (

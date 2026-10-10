@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { differenceInCalendarDays, format, parseISO } from "date-fns";
+import { CalendarClock } from "lucide-react";
 import { addRecord, deleteRecord, getRecords, updateRecord } from "@/lib/db";
 import EntryWizard from "@/components/EntryWizard";
 import ChoicePicker from "@/components/ChoicePicker";
@@ -348,7 +349,7 @@ export default function CalendarEntriesManager() {
         <p className="mt-8 rounded-2xl border border-border bg-surface px-5 py-6 text-sm text-muted">Loading your exams and events…</p>
       ) : entries.length === 0 ? (
         <div className="mt-8 rounded-3xl border border-dashed border-border bg-surface px-6 py-10 text-center sm:px-10">
-          <span className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-background text-xl text-accent" aria-hidden="true">◷</span>
+          <span className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-background text-accent" aria-hidden="true"><CalendarClock className="size-6" strokeWidth={1.8} /></span>
           <h2 className="mt-5 text-lg font-semibold">Your calendar is clear</h2>
           <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-muted">Add an exam or event to see its date and countdown here.</p>
         </div>

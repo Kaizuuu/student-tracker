@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Clock3 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { getRecords } from "@/lib/db";
 import { getReminderSettings } from "@/lib/reminderSettings";
@@ -214,7 +215,7 @@ export default function ReminderCenter() {
 
   return <aside aria-label="Upcoming reminders" aria-live="polite" className="pointer-events-none fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+6rem)] z-40 mx-auto flex max-w-lg flex-col gap-2">
     {reminders.map((reminder) => <div key={reminder.key} className="pointer-events-auto flex items-start gap-3 rounded-2xl border border-border bg-surface/95 p-4 shadow-[0_12px_36px_rgb(20_55_75_/_20%)] backdrop-blur-xl">
-      <span className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-xl bg-accent/10 text-accent" aria-hidden="true">◷</span>
+      <span className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-xl bg-accent/10 text-accent" aria-hidden="true"><Clock3 className="size-[18px]" strokeWidth={1.8} /></span>
       <div className="min-w-0 flex-1">
         <p className="text-sm font-semibold">{reminder.title}</p>
         <p className="mt-0.5 break-words text-sm text-muted">{reminder.body}</p>

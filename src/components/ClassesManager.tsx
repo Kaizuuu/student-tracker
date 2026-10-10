@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { ArrowUpRight, CalendarDays, Plus } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { addRecord, deleteRecord, getRecords, updateRecord } from "@/lib/db";
 import EntryWizard from "@/components/EntryWizard";
@@ -255,7 +256,7 @@ export default function ClassesManager({ embedded = false, onManageSubjects }: {
         {!formOpen && (
           <div className="course-actions flex flex-wrap gap-2">
             <button type="button" onClick={() => { setImportOpen((open) => !open); setNotice(""); }} className="course-import-button min-h-11 rounded-xl border border-border px-4 text-sm font-semibold hover:bg-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">{importOpen ? "Close import" : "Import screenshot"}</button>
-            {subjects.length > 0 && <button type="button" onClick={() => openCreate()} className="course-add-button min-h-11 rounded-xl bg-accent px-5 text-sm font-semibold text-accent-foreground transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"><span aria-hidden="true">＋</span> Add class</button>}
+            {subjects.length > 0 && <button type="button" onClick={() => openCreate()} className="course-add-button inline-flex min-h-11 items-center gap-2 rounded-xl bg-accent px-5 text-sm font-semibold text-accent-foreground transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"><Plus aria-hidden="true" className="size-4" strokeWidth={2} /> Add class</button>}
           </div>
         )}
       </div>
@@ -331,7 +332,7 @@ export default function ClassesManager({ embedded = false, onManageSubjects }: {
         <p className="mt-8 rounded-2xl border border-border bg-surface px-5 py-6 text-sm text-muted">Loading your weekly schedule…</p>
       ) : subjects.length === 0 ? (
         <div className="mt-8 rounded-3xl border border-dashed border-border bg-surface px-6 py-10 text-center sm:px-10">
-          <span className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-background text-xl text-accent" aria-hidden="true">▦</span>
+          <span className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-background text-accent" aria-hidden="true"><CalendarDays className="size-6" strokeWidth={1.8} /></span>
           <h2 className="mt-5 text-lg font-semibold">Set up your first course</h2>
           <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-muted">Create a subject, then add its weekly meeting here without leaving this page.</p>
           {onManageSubjects ? <button type="button" onClick={onManageSubjects} className="mt-6 inline-flex min-h-11 items-center rounded-xl bg-accent px-4 text-sm font-semibold text-accent-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">Add a subject</button> : <Link href="/subjects" className="mt-6 inline-flex min-h-11 items-center rounded-xl bg-accent px-4 text-sm font-semibold text-accent-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">Manage subjects</Link>}
@@ -365,7 +366,7 @@ export default function ClassesManager({ embedded = false, onManageSubjects }: {
               <span className="course-empty-mark" aria-hidden="true">{String(WEEKDAYS.findIndex((day) => day.value === selectedDay) + 1).padStart(2, "0")}</span>
               <div><p className="font-medium">A little room in your {dayName.toLowerCase()}.</p>
               <p className="mt-1 text-sm text-muted">Add a class to give this day its shape.</p></div>
-              {!formOpen && <button type="button" onClick={() => openCreate(selectedDay)} className="course-empty-action mt-4 min-h-11 rounded-xl px-4 text-sm font-semibold text-accent hover:bg-accent/10 focus-visible:outline-2 focus-visible:outline-accent">Add class <span aria-hidden="true">↗</span></button>}
+              {!formOpen && <button type="button" onClick={() => openCreate(selectedDay)} className="course-empty-action mt-4 inline-flex min-h-11 items-center gap-2 rounded-xl px-4 text-sm font-semibold text-accent hover:bg-accent/10 focus-visible:outline-2 focus-visible:outline-accent">Add class <ArrowUpRight aria-hidden="true" className="size-4" /></button>}
             </div>
           ) : (
             <ol className="course-session-list mt-4 space-y-3">
@@ -386,7 +387,7 @@ export default function ClassesManager({ embedded = false, onManageSubjects }: {
                       <p className="course-session-details">{[classItem.room, classItem.teacher].filter(Boolean).join("  /  ") || "Room and teacher not added yet"}</p>
                     </div>
                     <div className="course-session-actions">
-                      <button type="button" onClick={() => openEdit(classItem)} aria-label={`Edit ${subjectName}`} className="course-edit-action">Edit <span aria-hidden="true">↗</span></button>
+                      <button type="button" onClick={() => openEdit(classItem)} aria-label={`Edit ${subjectName}`} className="course-edit-action">Edit <ArrowUpRight aria-hidden="true" className="ml-1 inline size-3.5" /></button>
                       <button type="button" onClick={() => void handleDelete(classItem, subjectName)} aria-label={`Remove ${subjectName}`} className="course-remove-action">Remove</button>
                     </div>
                   </li>
