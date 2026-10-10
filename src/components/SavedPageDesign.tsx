@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 
-/** Adds the saved Night Index composition while inheriting the existing Field Notes colors. */
+/** Adds page-scoped hooks for the shared planner visual system. */
 export default function SavedPageDesign({ page, children }: { page: "tasks" | "week" | "review" | "subjects" | "more"; children: ReactNode }) {
-  return <div className={`saved-page saved-page-${page}`} data-design="night-index">{children}</div>;
+  return <div className={`saved-page saved-page-${page}`} data-design="study-studio">{children}</div>;
 }

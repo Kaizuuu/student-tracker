@@ -245,8 +245,8 @@ export default function WeeklyCalendar() {
   const showPriority = activityFilter === "all" || activityFilter === "task";
 
   return (
-    <main className="mx-auto w-full max-w-6xl space-y-4 px-4 py-5 sm:px-6 sm:py-7">
-      <header className="rounded-2xl border border-border bg-surface p-4 shadow-sm sm:flex sm:items-center sm:justify-between sm:gap-4">
+    <main className="calendar-page mx-auto w-full max-w-6xl space-y-4 px-4 py-5 sm:px-6 sm:py-7">
+      <header className="calendar-toolbar rounded-2xl border border-border bg-surface p-4 shadow-sm sm:flex sm:items-center sm:justify-between sm:gap-4">
           <div className="flex min-w-0 items-center justify-between gap-3 sm:justify-start">
           <button type="button" onClick={() => changeDate(-1)} className="min-h-11 min-w-11 rounded-xl border border-border text-xl text-muted hover:bg-background" aria-label="Previous date">‹</button>
           <div className="min-w-0 text-center sm:text-left">
@@ -262,7 +262,7 @@ export default function WeeklyCalendar() {
         </div>
       </header>
 
-      <section className="rounded-2xl border border-border bg-surface p-3 sm:p-4" aria-label="Calendar filters">
+      <section className="calendar-filters rounded-2xl border border-border bg-surface p-3 sm:p-4" aria-label="Calendar filters">
         <div className="flex gap-2 overflow-x-auto pb-1">
           {ACTIVITY_FILTERS.map(({ value, label }) => (
             <button key={value} type="button" onClick={() => selectActivityFilter(value)} aria-pressed={activityFilter === value} className={`min-h-10 shrink-0 rounded-full border px-4 text-sm font-medium ${activityFilter === value ? "border-accent bg-accent/10 text-accent" : "border-border text-muted hover:bg-background"}`}>{label}</button>

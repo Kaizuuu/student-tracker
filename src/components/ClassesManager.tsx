@@ -246,27 +246,27 @@ export default function ClassesManager({ embedded = false, onManageSubjects }: {
 
   return (
     <section className={embedded ? "w-full" : "mx-auto w-full max-w-3xl"}>
-      <div className="flex flex-wrap items-end justify-between gap-4">
+      <div className="course-manager-head flex flex-wrap items-end justify-between gap-4">
         {!embedded && <div>
           <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-muted">Your weekly timetable</p>
           <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Classes</h1>
           <p className="mt-3 max-w-lg text-base leading-7 text-muted">A clear view of what meets each day, week after week.</p>
         </div>}
         {!formOpen && (
-          <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={() => { setImportOpen((open) => !open); setNotice(""); }} className="min-h-11 rounded-xl border border-border px-4 text-sm font-semibold hover:bg-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">{importOpen ? "Close import" : "Import screenshot"}</button>
-            {subjects.length > 0 && <button type="button" onClick={() => openCreate()} className="min-h-11 rounded-xl bg-accent px-5 text-sm font-semibold text-accent-foreground transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">Add class</button>}
+          <div className="course-actions flex flex-wrap gap-2">
+            <button type="button" onClick={() => { setImportOpen((open) => !open); setNotice(""); }} className="course-import-button min-h-11 rounded-xl border border-border px-4 text-sm font-semibold hover:bg-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">{importOpen ? "Close import" : "Import screenshot"}</button>
+            {subjects.length > 0 && <button type="button" onClick={() => openCreate()} className="course-add-button min-h-11 rounded-xl bg-accent px-5 text-sm font-semibold text-accent-foreground transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"><span aria-hidden="true">＋</span> Add class</button>}
           </div>
         )}
       </div>
 
-      {pageError && <p role="alert" className="mt-6 rounded-xl border border-red-500/30 bg-red-500/5 px-4 py-3 text-sm text-red-700 dark:text-red-300">{pageError}</p>}
-      {notice && <p role="status" className="mt-6 rounded-xl bg-accent/10 px-4 py-3 text-sm font-medium">{notice}</p>}
+      {pageError && <p role="alert" className="course-notice course-notice-error mt-6 rounded-xl border border-red-500/30 bg-red-500/5 px-4 py-3 text-sm text-red-700 dark:text-red-300">{pageError}</p>}
+      {notice && <p role="status" className="course-notice mt-6 rounded-xl bg-accent/10 px-4 py-3 text-sm font-medium">{notice}</p>}
 
       {importOpen && !formOpen && <ScheduleImageImport subjects={subjects} existingClasses={classes} onClose={() => setImportOpen(false)} onSave={handleImportSave} />}
 
       {formOpen && (
-        <form onSubmit={handleWizardSubmit} className="mt-8 min-w-0 w-full max-w-full rounded-3xl border border-border bg-surface p-5 sm:p-8">
+        <form onSubmit={handleWizardSubmit} className="course-class-form mt-8 min-w-0 w-full max-w-full rounded-3xl border border-border bg-surface p-5 sm:p-8">
           <EntryWizard
             title={editingId ? "Edit class" : "Add a weekly class"}
             step={wizardStep}
@@ -338,55 +338,56 @@ export default function ClassesManager({ embedded = false, onManageSubjects }: {
         </div>
       ) : (
         <>
-          <div className="mt-8 grid grid-cols-7 gap-1.5 rounded-2xl border border-border bg-surface p-2 sm:gap-2 sm:p-3" aria-label="Choose a day of the week">
+          <div className="course-day-strip mt-8 grid grid-cols-7 gap-1.5 rounded-2xl border border-border bg-surface p-2 sm:gap-2 sm:p-3" aria-label="Choose a day of the week">
             {WEEKDAYS.map((day) => {
               const active = selectedDay === day.value;
+              const isToday = today === day.value;
               return (
-                <button key={day.value} type="button" onClick={() => setSelectedDay(day.value)} aria-label={`${day.label}: ${classCounts[day.value] ?? 0} ${classCounts[day.value] === 1 ? "class" : "classes"}`} aria-pressed={active} className={`flex min-h-16 flex-col items-center justify-center gap-1 rounded-xl text-xs transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent sm:min-h-[4.5rem] ${active ? "bg-accent text-accent-foreground" : "text-muted hover:bg-background hover:text-foreground"}`}>
-                  <span className="font-semibold">{day.short}</span>
-                  <span className={`text-[10px] sm:hidden ${active ? "text-accent-foreground/80" : "text-muted"}`}>{classCounts[day.value] ?? 0}</span>
-                  <span className={`hidden text-[10px] sm:block ${active ? "text-accent-foreground/80" : "text-muted"}`}>{classCounts[day.value] ?? 0} {classCounts[day.value] === 1 ? "class" : "classes"}</span>
-                  {today === day.value && <span className="sr-only">Today</span>}
+                <button key={day.value} type="button" onClick={() => setSelectedDay(day.value)} aria-label={`${day.label}: ${classCounts[day.value] ?? 0} ${classCounts[day.value] === 1 ? "class" : "classes"}${isToday ? ", today" : ""}`} aria-pressed={active} className={`course-day-button flex min-h-16 flex-col items-center justify-center gap-1 rounded-xl text-xs transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${active ? "is-selected bg-accent text-accent-foreground" : "text-muted hover:bg-background hover:text-foreground"} ${isToday ? "is-today" : ""}`}>
+                  <span className="course-day-name font-semibold">{day.short}</span>
+                  <span className={`course-day-count text-[10px] ${active ? "text-accent-foreground/80" : "text-muted"}`}>{classCounts[day.value] ?? 0}<span className="hidden sm:inline"> {classCounts[day.value] === 1 ? "class" : "classes"}</span></span>
+                  {isToday && <span className="sr-only">Today</span>}
                 </button>
               );
             })}
           </div>
 
-          <div className="mt-8 flex items-center justify-between gap-4">
+          <div className="course-day-heading mt-8 flex items-center justify-between gap-4">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted">Weekly schedule</p>
-              <h2 className="mt-1 text-xl font-semibold">{dayName}</h2>
+              <p className="course-day-eyebrow text-xs font-semibold uppercase tracking-[0.16em] text-muted">Selected day / {String(WEEKDAYS.findIndex((day) => day.value === selectedDay) + 1).padStart(2, "0")}</p>
+              <h2 className="mt-1 text-xl font-semibold">{dayName}<span className="course-heading-period">.</span></h2>
             </div>
-            <p className="text-sm text-muted">{classesForDay.length} {classesForDay.length === 1 ? "class" : "classes"}</p>
+            <p className="course-day-total"><strong>{String(classesForDay.length).padStart(2, "0")}</strong><span>{classesForDay.length === 1 ? "session" : "sessions"}</span></p>
           </div>
 
           {classesForDay.length === 0 ? (
-            <div className="mt-4 rounded-2xl border border-border bg-surface px-5 py-8 text-center">
-              <p className="font-medium">No classes on {dayName}</p>
-              <p className="mt-1 text-sm text-muted">Add a class to start filling in your week.</p>
-              {!formOpen && <button type="button" onClick={() => openCreate(selectedDay)} className="mt-4 min-h-11 rounded-xl px-4 text-sm font-semibold text-accent hover:bg-accent/10 focus-visible:outline-2 focus-visible:outline-accent">Add class</button>}
+            <div className="course-empty-state mt-4 rounded-2xl border border-border bg-surface px-5 py-8">
+              <span className="course-empty-mark" aria-hidden="true">{String(WEEKDAYS.findIndex((day) => day.value === selectedDay) + 1).padStart(2, "0")}</span>
+              <div><p className="font-medium">A little room in your {dayName.toLowerCase()}.</p>
+              <p className="mt-1 text-sm text-muted">Add a class to give this day its shape.</p></div>
+              {!formOpen && <button type="button" onClick={() => openCreate(selectedDay)} className="course-empty-action mt-4 min-h-11 rounded-xl px-4 text-sm font-semibold text-accent hover:bg-accent/10 focus-visible:outline-2 focus-visible:outline-accent">Add class <span aria-hidden="true">↗</span></button>}
             </div>
           ) : (
-            <ol className="mt-4 space-y-3">
-              {classesForDay.map((classItem) => {
+            <ol className="course-session-list mt-4 space-y-3">
+              {classesForDay.map((classItem, index) => {
                 const subject = subjects.find((entry) => entry.id === classItem.subjectId);
                 const subjectName = subject?.name ?? "Unlinked subject";
                 return (
-                  <li key={classItem.id} className="flex flex-wrap items-start gap-x-4 gap-y-2 rounded-2xl border border-border bg-surface p-4 sm:flex-nowrap sm:gap-5 sm:p-5">
-                    <div className="w-[4.5rem] shrink-0 pt-0.5 text-right">
-                      <p className="text-sm font-semibold tabular-nums">{formatTime(classItem.startTime)}</p>
-                      <p className="mt-1 text-xs tabular-nums text-muted">{formatTime(classItem.endTime)}</p>
+                  <li key={classItem.id} className="course-session-card">
+                    <div className="course-session-time">
+                      <span>START</span>
+                      <strong>{formatTime(classItem.startTime)}</strong>
+                      <small>UNTIL {formatTime(classItem.endTime)}</small>
                     </div>
-                    <div className="w-1 shrink-0 rounded-full" style={{ background: subject?.color ?? "var(--border)" }} aria-hidden="true" />
-                    <div className="min-w-0 flex-1 basis-32">
-                      <h3 className="truncate font-semibold">{subjectName}</h3>
-                      {(classItem.room || classItem.teacher) && (
-                        <p className="mt-1.5 truncate text-sm text-muted">{[classItem.room, classItem.teacher].filter(Boolean).join(" · ")}</p>
-                      )}
+                    <div className="course-session-rule" style={{ background: subject?.color ?? "var(--accent)" }} aria-hidden="true" />
+                    <div className="course-session-main">
+                      <p className="course-session-kicker">WEEKLY MEETING <span>/{String(index + 1).padStart(2, "0")}</span></p>
+                      <h3>{subjectName}</h3>
+                      <p className="course-session-details">{[classItem.room, classItem.teacher].filter(Boolean).join("  /  ") || "Room and teacher not added yet"}</p>
                     </div>
-                    <div className="flex basis-full justify-end gap-1 sm:basis-auto sm:shrink-0 sm:flex-col sm:justify-center sm:gap-0.5 lg:flex-row lg:items-center lg:gap-1">
-                      <button type="button" onClick={() => openEdit(classItem)} aria-label={`Edit ${subjectName}`} className="min-h-10 rounded-lg px-2 text-xs font-medium text-muted hover:bg-background hover:text-foreground focus-visible:outline-2 focus-visible:outline-accent">Edit</button>
-                      <button type="button" onClick={() => void handleDelete(classItem, subjectName)} aria-label={`Remove ${subjectName}`} className="min-h-10 rounded-lg px-2 text-xs font-medium text-muted hover:bg-red-500/10 hover:text-red-700 focus-visible:outline-2 focus-visible:outline-red-500 dark:hover:text-red-300">Remove</button>
+                    <div className="course-session-actions">
+                      <button type="button" onClick={() => openEdit(classItem)} aria-label={`Edit ${subjectName}`} className="course-edit-action">Edit <span aria-hidden="true">↗</span></button>
+                      <button type="button" onClick={() => void handleDelete(classItem, subjectName)} aria-label={`Remove ${subjectName}`} className="course-remove-action">Remove</button>
                     </div>
                   </li>
                 );

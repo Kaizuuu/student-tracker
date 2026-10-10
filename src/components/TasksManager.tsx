@@ -11,7 +11,7 @@ import { dueDateTextClasses, getDueDateTone } from "@/lib/dueDateTone";
 import { downloadCalendarItem } from "@/lib/ics";
 import type { ReminderMinutesBefore, SubtaskRecord, SubjectRecord, TaskPriority, TaskRecord } from "@/types/records";
 
-type TaskFilter = "all" | "open" | "completed";
+type TaskFilter = "open" | "completed";
 
 type TaskForm = {
   title: string;
@@ -71,7 +71,7 @@ export default function TasksManager() {
   const [subtasks, setSubtasks] = useState<SubtaskRecord[]>([]);
   const [subjects, setSubjects] = useState<SubjectRecord[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<TaskFilter>("all");
+  const [filter, setFilter] = useState<TaskFilter>("open");
   const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<TaskForm>(EMPTY_FORM);
@@ -105,13 +105,12 @@ export default function TasksManager() {
   }, [refreshTasks]);
 
   const filterCounts = useMemo(() => ({
-    all: tasks.length,
     open: tasks.filter((task) => !task.completedAt).length,
     completed: tasks.filter((task) => Boolean(task.completedAt)).length,
   }), [tasks]);
 
   const visibleTasks = useMemo(() => tasks
-    .filter((task) => filter === "all" || (filter === "completed" ? Boolean(task.completedAt) : !task.completedAt))
+    .filter((task) => filter === "completed" ? Boolean(task.completedAt) : !task.completedAt)
     .sort((left, right) => {
       if (Boolean(left.completedAt) !== Boolean(right.completedAt)) return left.completedAt ? 1 : -1;
       if (!left.dueAt) return right.dueAt ? 1 : 0;
@@ -265,11 +264,11 @@ export default function TasksManager() {
   }
 
   return (
-    <section className="mx-auto w-full max-w-3xl">
+    <section className="tasks-page mx-auto w-full max-w-3xl">
       <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-muted">Your work, in one place</p>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Tasks</h1>
+          <h1 className="tasks-title text-3xl font-semibold tracking-tight sm:text-4xl">Tasks</h1>
           <p className="mt-3 max-w-lg text-base leading-7 text-muted">Keep the next step clear, and make progress a little at a time.</p>
         </div>
         {!formOpen && (
@@ -344,8 +343,8 @@ export default function TasksManager() {
         </form>
       )}
 
-      <div className="mt-8 flex gap-1 rounded-2xl border border-border bg-surface p-1" role="group" aria-label="Filter tasks">
-        {(["all", "open", "completed"] as TaskFilter[]).map((option) => (
+      <div className="tasks-filter mt-8 flex gap-1 rounded-2xl border border-border bg-surface p-1" role="group" aria-label="Filter tasks">
+        {(["open", "completed"] as TaskFilter[]).map((option) => (
           <button key={option} type="button" aria-pressed={filter === option} onClick={() => setFilter(option)} className={"min-h-11 flex-1 rounded-xl px-2 text-xs font-medium capitalize transition-colors sm:text-sm " + (filter === option ? "bg-background text-foreground shadow-sm" : "text-muted hover:text-foreground")}>
             {option === "open" ? "To do" : option} <span className="ml-1 text-muted">{filterCounts[option]}</span>
           </button>
@@ -358,12 +357,12 @@ export default function TasksManager() {
         ) : visibleTasks.length === 0 ? (
           <div className="rounded-3xl border border-dashed border-border bg-surface px-6 py-10 text-center sm:px-10">
             <span className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-background text-xl text-accent" aria-hidden="true">✓</span>
-            <h2 className="mt-5 text-lg font-semibold">{filter === "completed" ? "Nothing completed yet" : filter === "open" ? "You’re all caught up" : "Start with one task"}</h2>
-            <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-muted">{filter === "completed" ? "Finished tasks will be collected here." : filter === "open" ? "New tasks you add will appear here." : "Add an assignment, reminder, or any next step you want to remember."}</p>
-            {filter !== "completed" && !formOpen && <button type="button" onClick={startCreate} className="mt-6 min-h-11 rounded-xl border border-border px-4 text-sm font-semibold hover:bg-background focus-visible:outline-2 focus-visible:outline-accent">Add your first task</button>}
+            <h2 className="mt-5 text-lg font-semibold">{filter === "completed" ? "Nothing completed yet" : "You’re all caught up"}</h2>
+            <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-muted">{filter === "completed" ? "Finished tasks will be collected here." : "New tasks you add will appear here."}</p>
+            {filter === "open" && !formOpen && <button type="button" onClick={startCreate} className="mt-6 min-h-11 rounded-xl border border-border px-4 text-sm font-semibold hover:bg-background focus-visible:outline-2 focus-visible:outline-accent">Add your first task</button>}
           </div>
         ) : (
-          <ul className="space-y-4" aria-label="Tasks">
+          <ul className="tasks-list space-y-4" aria-label="Tasks">
             {visibleTasks.map((task) => {
               const subject = subjects.find((item) => item.id === task.subjectId);
               const taskSteps = subtasks.filter((item) => item.taskId === task.id).sort((left, right) => left.position - right.position);
@@ -371,7 +370,7 @@ export default function TasksManager() {
               const progress = taskSteps.length ? Math.round((completedSteps / taskSteps.length) * 100) : 0;
 
               return (
-                <li key={task.id} className={"rounded-3xl border border-border bg-surface p-5 sm:p-6 " + (task.completedAt ? "opacity-75" : "")}>
+                <li key={task.id} className={"task-card rounded-3xl border border-border bg-surface p-5 sm:p-6 " + (task.completedAt ? "opacity-75" : "")}>
                   <div className="flex flex-wrap items-start gap-x-3 gap-y-2 sm:flex-nowrap">
                     <button type="button" onClick={() => void toggleTask(task)} aria-label={(task.completedAt ? "Mark " + task.title + " as open" : "Complete " + task.title)} aria-pressed={Boolean(task.completedAt)} className={"mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full border-2 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent " + (task.completedAt ? "border-accent bg-accent text-accent-foreground" : "border-border text-transparent hover:border-accent")}>
                       <span aria-hidden="true" className="text-xs font-bold">✓</span>

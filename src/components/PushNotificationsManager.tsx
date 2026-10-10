@@ -187,7 +187,7 @@ export default function PushNotificationsManager() {
 
       {iosInstallNeeded && <p className="mt-4 rounded-2xl border border-border bg-background px-4 py-3 text-sm leading-6 text-muted">On iPhone or iPad, use Safari’s Share menu to add Student Tracker to your Home Screen (iOS/iPadOS 16.4 or later), then open it from the new icon before enabling push.</p>}
       {!supported && <p className="mt-4 rounded-2xl border border-border bg-background px-4 py-3 text-sm leading-6 text-muted">{iosDevice ? "iPhone and iPad push requires iOS/iPadOS 16.4 or later and Student Tracker opened from its Home Screen icon." : "This browser does not support web push notifications."}</p>}
-      {supported && !user && <p className="mt-4 rounded-2xl border border-border bg-background px-4 py-3 text-sm leading-6 text-muted">Sign in to your sync account to save this browser’s private push subscription. <Link href="/more#sync-heading" className="font-semibold text-accent underline decoration-accent/40 underline-offset-2">Open sync settings</Link>.</p>}
+      {supported && !user && <p className="mt-4 rounded-2xl border border-border bg-background px-4 py-3 text-sm leading-6 text-muted">Sign in to your sync account to save this browser’s private push subscription. <Link href="/settings#sync-heading" className="font-semibold text-accent underline decoration-accent/40 underline-offset-2">Open sync settings</Link>.</p>}
       {supported && permission === "denied" && <p className="mt-4 rounded-2xl border border-border bg-background px-4 py-3 text-sm leading-6 text-muted">Notifications are blocked by this browser. Allow them in the site settings before enabling reminders.</p>}
 
       <div className="mt-4 flex flex-wrap gap-2">

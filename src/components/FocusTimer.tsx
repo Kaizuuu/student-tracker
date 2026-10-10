@@ -242,7 +242,7 @@ export default function FocusTimer() {
   const canEndEarly = Boolean(timer?.mode === "focus" && elapsedSeconds > 0);
 
   return (
-    <section className="mx-auto w-full max-w-3xl">
+    <section className="focus-page mx-auto w-full max-w-3xl">
       <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-accent">Study with intention</p>
       <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Focus timer</h1>
       <p className="mt-2 max-w-xl text-base leading-7 text-muted">Work in a focused block, then take a short break. Finished time is saved to the task and its subject.</p>
@@ -251,7 +251,7 @@ export default function FocusTimer() {
       {notice && <p role="status" className="mt-5 rounded-xl bg-accent/10 px-4 py-3 text-sm font-medium">{notice}</p>}
 
       <div className="mt-6 grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
-        <section aria-label="Pomodoro timer" className="rounded-3xl border border-border bg-surface p-5 text-center sm:p-8">
+        <section aria-label="Pomodoro timer" className="focus-clock rounded-3xl border border-border bg-surface p-5 text-center sm:p-8">
           {timer ? <>
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-accent">{timer.mode === "focus" ? "Focus block" : "Break"}</p>
             <p className="mt-2 text-sm text-muted">{timer.mode === "focus" ? selectedTask?.title ?? "Selected task" : "Rest your mind before the next block."}</p>
@@ -274,7 +274,7 @@ export default function FocusTimer() {
           </>}
         </section>
 
-        <section aria-labelledby="focus-setup-heading" className="rounded-3xl border border-border bg-surface p-5 sm:p-6">
+        <section aria-labelledby="focus-setup-heading" className="focus-setup rounded-3xl border border-border bg-surface p-5 sm:p-6">
           <h2 id="focus-setup-heading" className="text-lg font-semibold">Set up a block</h2>
           <label htmlFor="focus-task" className="mt-4 block text-sm font-medium">Task</label>
           <ChoicePicker id="focus-task" value={timer?.taskId ?? selectedTaskId} placeholder="Choose a task" disabled={Boolean(timer) || loading} options={[{ value: "", label: "Choose a task", marker: "+", description: "Pick a task to focus on" }, ...tasks.map((task) => ({ value: task.id, label: task.title, marker: task.completedAt ? "✓" : "•", description: task.completedAt ? "Completed" : "Open task" }))]} onChange={setSelectedTaskId} />

@@ -259,7 +259,7 @@ export default function CalendarEntriesManager() {
   }
 
   return (
-    <section className="mx-auto w-full max-w-3xl">
+    <section className="dates-page mx-auto w-full max-w-3xl">
       <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-muted">Dates to remember</p>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
@@ -353,7 +353,7 @@ export default function CalendarEntriesManager() {
           <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-muted">Add an exam or event to see its date and countdown here.</p>
         </div>
       ) : (
-        <div className="mt-8 space-y-8">
+        <div className="dates-groups mt-8 space-y-8">
           <section aria-labelledby="upcoming-heading">
             <div className="mb-4 flex items-center justify-between gap-3">
               <h2 id="upcoming-heading" className="text-xs font-semibold uppercase tracking-[0.16em] text-muted">Upcoming</h2>

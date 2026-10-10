@@ -155,12 +155,12 @@ export default function HabitsManager() {
   const todayCount = completedToday.size;
 
   return (
-    <section className="mx-auto w-full max-w-2xl">
+    <section className="habits-page mx-auto w-full max-w-2xl">
       <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-accent">Build a steady rhythm</p>
       <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Daily habits</h1>
       <p className="mt-3 max-w-lg text-base leading-7 text-muted">Check off the small routines you want to keep. One missed day won’t break your streak.</p>
 
-      <div className="mt-6 rounded-2xl border border-border bg-surface p-4 sm:p-5">
+      <div className="habit-progress mt-6 rounded-2xl border border-border bg-surface p-4 sm:p-5">
         <div className="flex items-center justify-between gap-3">
           <div><p className="text-sm font-semibold">Today</p><p className="mt-1 text-sm text-muted">{today ? displayDate(today) : "Getting today’s date…"}</p></div>
           <p className="rounded-full bg-accent/10 px-3 py-1.5 text-sm font-semibold text-accent">{todayCount} / {habits.length} done</p>
@@ -205,7 +205,7 @@ export default function HabitsManager() {
               <div className="mt-3 flex justify-end gap-2"><button type="button" onClick={() => setEditingHabitId(null)} className="min-h-10 rounded-xl px-4 text-sm font-medium text-muted hover:bg-background">Cancel</button><button type="submit" disabled={!editTitle.trim() || busy} className="min-h-10 rounded-xl bg-accent px-4 text-sm font-semibold text-accent-foreground disabled:opacity-50">Save</button></div>
             </form>
           </article>;
-          return <article key={habit.id} className={`rounded-2xl border border-border bg-surface p-4 transition-opacity sm:p-5 ${busy ? "opacity-70" : ""}`}>
+          return <article key={habit.id} className={`habit-card rounded-2xl border border-border bg-surface p-4 transition-opacity sm:p-5 ${busy ? "opacity-70" : ""}`}>
             <div className="flex items-start gap-3">
               <div className="min-w-0 flex-1">
                 <h2 className={`break-words text-base font-semibold ${checked ? "text-muted line-through" : ""}`}>{habit.title}</h2>

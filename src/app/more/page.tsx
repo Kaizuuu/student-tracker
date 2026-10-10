@@ -1,20 +1,17 @@
 import Link from "next/link";
-import BackupManager from "@/components/BackupManager";
-import PushNotificationsManager from "@/components/PushNotificationsManager";
-import SyncManager from "@/components/SyncManager";
 import PwaInstallCard from "@/components/PwaInstallCard";
 import SavedPageDesign from "@/components/SavedPageDesign";
 
 export default function MorePage() {
   return (
-    <SavedPageDesign page="more"><section className="mx-auto w-full max-w-2xl">
+    <SavedPageDesign page="more"><section className="more-page mx-auto w-full max-w-2xl">
       <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-muted">Your planner</p>
       <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">More</h1>
       <p className="mt-3 max-w-lg text-base leading-7 text-muted">Manage the building blocks that keep your planner organized.</p>
 
       <Link
         href="/focus"
-        className="mt-8 flex min-h-20 items-center gap-4 rounded-2xl border border-border bg-surface p-5 transition-colors hover:bg-background focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        className="more-link mt-8 flex min-h-20 items-center gap-4 rounded-2xl border border-border bg-surface p-5 transition-colors hover:bg-background focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
       >
         <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-accent/10 text-lg text-accent" aria-hidden="true">◴</span>
         <span className="min-w-0 flex-1">
@@ -26,7 +23,7 @@ export default function MorePage() {
 
       <Link
         href="/week"
-        className="mt-3 flex min-h-20 items-center gap-4 rounded-2xl border border-border bg-surface p-5 transition-colors hover:bg-background focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        className="more-link mt-3 flex min-h-20 items-center gap-4 rounded-2xl border border-border bg-surface p-5 transition-colors hover:bg-background focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
       >
         <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-accent/10 text-lg text-accent" aria-hidden="true">▦</span>
         <span className="min-w-0 flex-1">
@@ -73,18 +70,6 @@ export default function MorePage() {
       </Link>
 
       <Link
-        href="/classes#subjects"
-        className="mt-3 flex min-h-20 items-center gap-4 rounded-2xl border border-border bg-surface p-5 transition-colors hover:bg-background focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-      >
-        <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-accent/10 text-lg text-accent" aria-hidden="true">◉</span>
-        <span className="min-w-0 flex-1">
-          <span className="block font-semibold">Classes &amp; subjects</span>
-          <span className="mt-1 block text-sm text-muted">Weekly timetable, subject details, and colors</span>
-        </span>
-        <span className="text-xl text-muted" aria-hidden="true">›</span>
-      </Link>
-
-      <Link
         href="/calendar"
         className="mt-3 flex min-h-20 items-center gap-4 rounded-2xl border border-border bg-surface p-5 transition-colors hover:bg-background focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
       >
@@ -97,21 +82,18 @@ export default function MorePage() {
       </Link>
 
       <Link
-        href="/design"
-        className="mt-3 flex min-h-20 items-center gap-4 rounded-2xl border border-border bg-surface p-5 transition-colors hover:bg-background focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        href="/settings"
+        className="more-settings-link mt-3 flex min-h-20 items-center gap-4 rounded-2xl border border-border bg-surface p-5 transition-colors hover:bg-background focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
       >
-        <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-accent/10 text-lg text-accent" aria-hidden="true">◈</span>
+        <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-accent/10 text-lg text-accent" aria-hidden="true">⚙</span>
         <span className="min-w-0 flex-1">
-          <span className="block font-semibold">Choose a design direction</span>
-          <span className="mt-1 block text-sm text-muted">Compare visual concepts and leave notes</span>
+          <span className="block font-semibold">Settings</span>
+          <span className="mt-1 block text-sm text-muted">Profile, sync, notifications, and backups</span>
         </span>
         <span className="text-xl text-muted" aria-hidden="true">›</span>
       </Link>
 
       <PwaInstallCard />
-      <SyncManager />
-      <PushNotificationsManager />
-      <BackupManager />
     </section></SavedPageDesign>
   );
 }

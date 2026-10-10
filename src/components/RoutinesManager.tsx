@@ -156,7 +156,7 @@ export default function RoutinesManager() {
   }
 
   return (
-    <section className="mx-auto w-full max-w-4xl">
+    <section className="routines-page mx-auto w-full max-w-4xl">
       <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-accent">Daily rhythm</p>
       <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Morning &amp; night routines</h1>
       <p className="mt-3 max-w-xl text-base leading-7 text-muted">Keep your routines in the order that works for you. Check off each step as you go.</p>
@@ -169,13 +169,13 @@ export default function RoutinesManager() {
         {PERIODS.map((period) => {
           const routineItems = items.filter((item) => item.period === period.value).sort((a, b) => a.position - b.position);
           const doneCount = routineItems.filter((item) => checkedToday.has(item.id)).length;
-          return <section key={period.value} aria-labelledby={`${period.value}-routine-heading`} className="rounded-2xl border border-border bg-surface p-4 sm:p-5">
+          return <section key={period.value} aria-labelledby={`${period.value}-routine-heading`} className={`routine-card routine-${period.value} rounded-2xl border border-border bg-surface p-4 sm:p-5`}>
             <div className="flex items-start justify-between gap-3">
               <div><h2 id={`${period.value}-routine-heading`} className="text-lg font-semibold">{period.title}</h2><p className="mt-1 text-sm text-muted">{period.description}</p></div>
               <span className="shrink-0 rounded-full bg-accent/10 px-3 py-1 text-xs font-semibold text-accent">{doneCount}/{routineItems.length}</span>
             </div>
 
-            {routineItems.length > 0 ? <ol className="mt-4 space-y-2">
+            {routineItems.length > 0 ? <ol className="routine-steps mt-4 space-y-2">
               {routineItems.map((item, index) => {
                 const checked = checkedToday.has(item.id);
                 const busy = busyIds.has(item.id);

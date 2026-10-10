@@ -23,7 +23,12 @@ const desktopLinks = [
   { href: "/habits", label: "Daily habits", icon: "habits" },
   { href: "/routines", label: "Routines", icon: "routines" },
   { href: "/review", label: "Weekly review", icon: "review" },
-  { href: "/design", label: "Design direction", icon: "review" },
+] as const;
+
+const desktopGroups = [
+  { label: "Plan", links: desktopLinks.slice(0, 2) },
+  { label: "Practice", links: desktopLinks.slice(2, 5) },
+  { label: "Reflect", links: desktopLinks.slice(5) },
 ] as const;
 
 type NavigationIcon = (typeof tabs)[number]["icon"] | (typeof desktopLinks)[number]["icon"];
@@ -93,9 +98,12 @@ export default function AppShell({ children }: { children: ReactNode }) {
     <div className="app-shell flex min-h-dvh flex-col">
       <header className="app-header sticky top-0 z-20 border-b border-border/70 bg-background/75 backdrop-blur-2xl supports-[backdrop-filter]:bg-background/60">
         <div className="app-header-inner mx-auto flex h-[4.25rem] w-full max-w-5xl items-center justify-between px-5 sm:px-8">
-          <Link href="/" className="group flex min-h-11 items-center gap-3 rounded-xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent">
-            <Image src="/student-tracker-logo.png" alt="" width={36} height={36} priority className="size-9 shrink-0 object-contain transition-transform group-hover:scale-105" aria-hidden="true" />
-            <span className="text-[15px] font-semibold tracking-tight sm:text-base">Student Tracker</span>
+          <Link href="/" className="app-brand group flex min-h-11 items-center gap-3 rounded-xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent">
+            <Image src="/student-tracker-logo.png" alt="" width={38} height={38} priority className="app-brand-mark size-[2.375rem] shrink-0 object-contain transition-transform group-hover:scale-[1.04]" aria-hidden="true" />
+            <span className="app-brand-copy">
+              <span className="app-brand-name">Student Tracker</span>
+              <span className="app-brand-caption">Your academic rhythm</span>
+            </span>
           </Link>
           <ThemeToggle />
         </div>
@@ -112,9 +120,13 @@ export default function AppShell({ children }: { children: ReactNode }) {
           {tabs.slice(0, 2).map(renderTab)}
           <QuickAdd />
           {tabs.slice(2).map(renderTab)}
-          <div className="app-navigation-extras" aria-label="More planner pages">
-            <p className="app-navigation-heading">Plan &amp; reflect</p>
-            {desktopLinks.map(renderDesktopLink)}
+          <div className="app-navigation-extras" aria-label="Planner tools">
+            {desktopGroups.map((group) => (
+              <div className="app-navigation-group" key={group.label}>
+                <p className="app-navigation-heading">{group.label}</p>
+                {group.links.map(renderDesktopLink)}
+              </div>
+            ))}
           </div>
         </div>
       </nav>

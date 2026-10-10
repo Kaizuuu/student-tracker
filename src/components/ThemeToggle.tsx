@@ -6,17 +6,27 @@ type Theme = "light" | "dark";
 
 const STORAGE_KEY = "student-tracker-theme";
 
+function updateThemeColor(theme: Theme) {
+  const color = theme === "dark" ? "#151a18" : "#f3f1eb";
+  document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]').forEach((meta) => {
+    meta.content = color;
+  });
+}
+
 export default function ThemeToggle() {
   const [theme, setTheme] = useState<Theme>("light");
 
   useEffect(() => {
-    setTheme(document.documentElement.dataset.theme === "dark" ? "dark" : "light");
+    const currentTheme = document.documentElement.dataset.theme === "dark" ? "dark" : "light";
+    setTheme(currentTheme);
+    updateThemeColor(currentTheme);
   }, []);
 
   function toggleTheme() {
     const nextTheme = theme === "dark" ? "light" : "dark";
     document.documentElement.dataset.theme = nextTheme;
     document.documentElement.style.colorScheme = nextTheme;
+    updateThemeColor(nextTheme);
     try {
       window.localStorage.setItem(STORAGE_KEY, nextTheme);
     } catch {

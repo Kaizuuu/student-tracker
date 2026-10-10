@@ -166,7 +166,7 @@ export default function WeeklyReview() {
   const totalLoad = review.nextWeekItems;
 
   return (
-    <section className="mx-auto w-full max-w-4xl">
+    <section className="review-page mx-auto w-full max-w-4xl">
       <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-accent">Reflect and plan</p>
       <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Weekly review</h1>
       <p className="mt-2 text-base text-muted">{weekLabel(review.weekStart, review.weekEnd)}</p>
@@ -224,7 +224,7 @@ export default function WeeklyReview() {
 }
 
 function SummaryCard({ label, value, detail, tone = "normal" }: { label: string; value: number; detail: string; tone?: "normal" | "warning" }) {
-  return <div className={`rounded-2xl border p-4 ${tone === "warning" ? "border-red-500/25 bg-red-500/5" : "border-border bg-surface"}`}>
+  return <div className={`review-summary review-summary-${label.toLowerCase().replace(/[^a-z0-9]+/g, "-")} rounded-2xl border p-4 ${tone === "warning" ? "border-red-500/25 bg-red-500/5" : "border-border bg-surface"}`}>
     <p className="text-sm font-medium text-muted">{label}</p><p className={`mt-1 text-3xl font-semibold tabular-nums ${tone === "warning" ? "text-red-700 dark:text-red-300" : ""}`}>{value}</p><p className="mt-1 text-xs leading-5 text-muted">{detail}</p>
   </div>;
 }
